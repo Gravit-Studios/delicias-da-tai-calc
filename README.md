@@ -22,3 +22,7 @@ npm run start
 npm test
 npm run build
 ```
+## Publicação no GitHub
+
+O passo a passo para autorizar pelo terminal e publicar no GitHub está em [`docs/subir-para-github.md`](docs/subir-para-github.md).
+
