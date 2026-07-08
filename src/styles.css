@@ -135,7 +135,67 @@ h2 { font-size: clamp(1.35rem, 3vw, 2rem); }
   padding: 16px;
 }
 
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  color: #6f4a42;
+  font-weight: 700;
+}
+
+.auth-shell { max-width: 560px; }
+
+.auth-panel { display: grid; gap: 20px; }
+
+.auth-tabs { display: flex; gap: 8px; }
+
+.auth-tabs button.active { background: #8f3f37; color: #fff; }
+
+.auth-panel form { display: grid; gap: 14px; }
+
+.auth-error { color: #b23b2f; font-weight: 700; margin: 0; }
+
+.status-message {
+  margin: 0 0 20px;
+  padding: 14px 18px;
+  border-radius: 16px;
+  background: #fff0e8;
+  color: #8f3f37;
+  font-weight: 700;
+}
+
+.save-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 6px; }
+
+.muted { color: #a2837a; font-weight: 600; }
+
+.saved-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+
+.saved-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border-radius: 14px;
+  background: #fff8f3;
+  border: 1px solid #f0ded6;
+}
+
+.saved-list-actions { display: flex; gap: 6px; flex-shrink: 0; }
+
+.saved-list-actions button { padding: 0.5rem 0.8rem; font-size: 0.85rem; }
+
+.new-ingredient-form {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr auto;
+  gap: 10px;
+  margin-top: 16px;
+}
+
 @media (max-width: 900px) {
+  .new-ingredient-form { grid-template-columns: 1fr 1fr; }
+
   .hero,
   .product-panel,
   .content-grid { grid-template-columns: 1fr; }
