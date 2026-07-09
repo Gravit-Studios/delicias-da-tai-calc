@@ -143,3 +143,24 @@ create index if not exists ingredients_user_id_idx on public.ingredients (user_i
 create index if not exists products_user_id_idx on public.products (user_id);
 create index if not exists product_ingredients_product_id_idx on public.product_ingredients (product_id);
 create index if not exists pricing_history_user_id_idx on public.pricing_history (user_id, created_at desc);
+
+-- =========================================================
+-- Tabela: cost_settings
+-- Custos padrão do usuário (embalagem, mão de obra, margem), usados
+-- para pré-preencher o assistente de novo produto.
+-- =========================================================
+create table if not exists public.cost_settings (
+  user_id uuid primary key references auth.users (id) on delete cascade,
+  packaging numeric not null default 0,
+  extra_costs numeric not null default 0,
+  labor numeric not null default 0,
+  profit_margin numeric not null default 30,
+  updated_at timestamptz not null default now()
+);
+
+alter table public.cost_settings enable row level security;
+
+create policy "Usuário gerencia os próprios custos padrão"
+  on public.cost_settings for all
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);

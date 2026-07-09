@@ -115,6 +115,28 @@ export async function deleteProduct(id) {
   if (error) throw error;
 }
 
+// ---------- Custos padrão (usados para pré-preencher novos produtos) ----------
+
+export async function getCostSettings(userId) {
+  const { data, error } = await supabase
+    .from('cost_settings')
+    .select('*')
+    .eq('user_id', userId)
+    .maybeSingle();
+  if (error) throw error;
+  return data;
+}
+
+export async function saveCostSettings(userId, settings) {
+  const { data, error } = await supabase
+    .from('cost_settings')
+    .upsert({ user_id: userId, ...settings, updated_at: new Date().toISOString() })
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
 // ---------- Histórico de precificação ----------
 
 export async function saveHistoryEntry(userId, entry) {
