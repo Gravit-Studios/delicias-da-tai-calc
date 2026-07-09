@@ -310,19 +310,36 @@ function productCardGrid(list) {
 // ---------------- Páginas ----------------
 
 function renderDashboard() {
-  const ultimo = state.history[0];
-  const ultimoMedia = ultimo?.tiers?.find((t) => t.name === 'Média') ?? ultimo?.tiers?.[0];
+  const ultimoProduto = state.savedProducts[0];
+  const ultimoHistorico = state.history[0];
+  const ultimoMedia = ultimoHistorico?.tiers?.find((t) => t.name === 'Média') ?? ultimoHistorico?.tiers?.[0];
+
   return `
     ${banner('Calculadora de precificação para confeitaria', 'Acompanhe seus produtos, ingredientes e o histórico de preços em um só lugar.')}
     ${statusBox()}
-    <div class="stat-grid">
-      <div class="stat-card"><span>Produtos salvos</span><strong>${state.savedProducts.length}</strong></div>
-      <div class="stat-card"><span>Ingredientes cadastrados</span><strong>${state.savedIngredients.length}</strong></div>
-      <div class="stat-card"><span>Último preço (média)</span><strong>${ultimoMedia ? formatCurrency(ultimoMedia.unitPrice) : '—'}</strong></div>
+    <div class="highlight-grid">
+      <div class="highlight-card">
+        <span class="eyebrow">Produtos cadastrados</span>
+        <strong>${state.savedProducts.length}</strong>
+        <button type="button" class="ghost" data-action="goto" data-route="produtos">Ver produtos</button>
+      </div>
+      <div class="highlight-card">
+        <span class="eyebrow">Último produto cadastrado</span>
+        ${ultimoProduto
+          ? `<strong class="highlight-name">${escapeHtml(ultimoProduto.name)}</strong>
+             <span class="muted">${ultimoMedia ? `Preço médio: ${formatCurrency(ultimoMedia.unitPrice)}` : `Rendimento: ${ultimoProduto.yield_amount} un.`}</span>
+             <button type="button" class="ghost" data-action="open-produto" data-id="${ultimoProduto.id}">Abrir produto</button>`
+          : '<strong class="highlight-name">—</strong><span class="muted">Nenhum produto ainda.</span>'}
+      </div>
+      <div class="highlight-card highlight-card-cta">
+        <span class="eyebrow">Novo produto</span>
+        <strong>Monte uma nova ficha</strong>
+        <button type="button" data-action="start-wizard">+ Novo produto</button>
+      </div>
     </div>
     <div class="panel">
-      <div class="section-header"><h2>Produtos recentes</h2><button type="button" class="ghost" data-action="goto" data-route="produtos">Ver todos</button></div>
-      ${state.dataLoading ? loadingMsg() : (state.savedProducts.length ? productCardGrid(state.savedProducts.slice(0, 4)) : emptyState('Nenhum produto salvo ainda.', true))}
+      <div class="section-header"><h2>Receitas cadastradas</h2></div>
+      ${state.dataLoading ? loadingMsg() : (state.savedProducts.length ? productCardGrid(state.savedProducts) : emptyState('Nenhum produto salvo ainda.', true))}
     </div>`;
 }
 
@@ -534,24 +551,26 @@ function navItem(route, label) {
 function shellHtml() {
   return `
     <div class="shell">
-      <aside class="sidebar">
-        <div class="brand"><span class="brand-mark"></span> Delícias da Tai</div>
-        <ul class="nav-list">
-          ${navItem('inicio', 'Início')}
-          ${navItem('produtos', 'Produtos')}
-          ${navItem('ingredientes', 'Ingredientes')}
-          ${navItem('despesas', 'Despesas')}
-          ${navItem('lucro', 'Lucro')}
-          ${navItem('fornecedores', 'Fornecedores')}
-          ${navItem('historico', 'Histórico')}
-        </ul>
-        <button type="button" class="nav-cta" data-action="start-wizard" style="width:100%">+ Novo produto</button>
-      </aside>
-      <div class="main-area">
-        <div class="topbar">
-          <span>Olá, ${escapeHtml(state.session.user.email)}</span>
-          <button type="button" class="ghost" data-action="logout">Sair</button>
+      <header class="navbar">
+        <div class="navbar-inner">
+          <div class="brand"><span class="brand-mark"></span> Delícias da Tai</div>
+          <ul class="nav-list">
+            ${navItem('inicio', 'Início')}
+            ${navItem('produtos', 'Produtos')}
+            ${navItem('ingredientes', 'Ingredientes')}
+            ${navItem('despesas', 'Despesas')}
+            ${navItem('lucro', 'Lucro')}
+            ${navItem('fornecedores', 'Fornecedores')}
+            ${navItem('historico', 'Histórico')}
+          </ul>
+          <div class="navbar-user">
+            <button type="button" class="nav-cta" data-action="start-wizard">+ Novo produto</button>
+            <span class="navbar-email">${escapeHtml(state.session.user.email)}</span>
+            <button type="button" class="ghost" data-action="logout">Sair</button>
+          </div>
         </div>
+      </header>
+      <div class="main-area">
         <div class="page">${renderPage()}</div>
       </div>
     </div>`;
