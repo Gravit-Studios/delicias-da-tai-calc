@@ -2244,6 +2244,24 @@ async function handleConfirmDelete() {
   if (modal.kind === 'supplier') await handleDeleteSupplier(modal.id);
   if (modal.kind === 'admin-suspend') await handleAdminAction('suspend', modal.id);
   if (modal.kind === 'admin-delete') await handleAdminAction('delete', modal.id);
+  if (modal.kind === 'recipe-ingredient') handleRemoveIngredient(modal.editorKey, modal.id);
+}
+
+function handleRemoveIngredient(editorKey, id) {
+  const ed = getEditor(editorKey);
+  ed.ingredients = ed.ingredients.filter((i) => i.id !== id);
+  render();
+}
+
+function openConfirmRemoveIngredient(editorKey, id, name) {
+  openModal('confirm-delete', {
+    kind: 'recipe-ingredient',
+    id,
+    editorKey,
+    title: 'Excluir ingrediente da receita',
+    message: `Tem certeza que deseja excluir "${name || 'este ingrediente'}" desta receita?`,
+    confirmLabel: 'Excluir',
+  });
 }
 
 // Abre o modal de adicionar ingrediente (wizard ou edição de receita): cria
@@ -2548,8 +2566,8 @@ app.addEventListener('click', (event) => {
       break;
     case 'remove-ingredient': {
       const ed = getEditor(editorKey);
-      ed.ingredients = ed.ingredients.filter((i) => i.id !== id);
-      render();
+      const ingredient = ed.ingredients.find((i) => i.id === id);
+      openConfirmRemoveIngredient(editorKey, id, ingredient?.name);
       break;
     }
     case 'wizard-next':
