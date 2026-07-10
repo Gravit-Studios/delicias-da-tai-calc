@@ -564,7 +564,8 @@ function ingredientNameCell(editorKey, ingredient) {
 function readOnlyIngredientsTable(editorKey, visible) {
   const addLink = addRowLink('Adicionar ingrediente', 'add-ingredient', editorKey);
   return `
-  <table class="data-table data-table-cards-mobile">
+  <div class="table-scroll">
+  <table class="data-table">
     <thead><tr><th>Ingrediente</th><th>Preço da compra</th><th>Qtd. comprada</th><th>Qtd. usada</th><th>Un.</th><th>Preço utilizado</th><th></th></tr></thead>
     <tbody>
       ${visible.map((ingredient) => {
@@ -572,16 +573,17 @@ function readOnlyIngredientsTable(editorKey, visible) {
         return `
         <tr data-ingredient="${ingredient.id}">
           <td>${escapeHtml(ingredient.name)}</td>
-          <td data-label="Preço da compra">${formatCurrency(toNumberSafe(ingredient.packagePrice))}</td>
-          <td data-label="Qtd. comprada">${escapeHtml(ingredient.packageAmount)}</td>
-          <td data-label="Qtd. usada">${escapeHtml(ingredient.usedAmount)}</td>
-          <td data-label="Un.">${escapeHtml(ingredient.unit)}</td>
-          <td data-label="Preço utilizado">${formatCurrency(usedCost)}</td>
+          <td>${formatCurrency(toNumberSafe(ingredient.packagePrice))}</td>
+          <td>${escapeHtml(ingredient.packageAmount)}</td>
+          <td>${escapeHtml(ingredient.usedAmount)}</td>
+          <td>${escapeHtml(ingredient.unit)}</td>
+          <td>${formatCurrency(usedCost)}</td>
           <td class="data-table-actions"><button class="ghost" type="button" data-action="remove-ingredient" data-editor="${editorKey}" data-id="${ingredient.id}">Excluir</button></td>
         </tr>`;
       }).join('')}
     </tbody>
   </table>
+  </div>
   ${addLink}`;
 }
 
@@ -730,15 +732,16 @@ function productsTable(list) {
 function photoUploadField(editorKey, editor) {
   const previewSrc = editor.photoPreviewUrl || editor.photoUrl || '';
   return `
-    <div class="photo-upload">
+    <label class="photo-dropzone" data-photo-drop="${editorKey}">
+      <input type="file" accept="image/*" data-photo-input="${editorKey}" hidden />
       ${previewSrc
         ? `<img src="${previewSrc}" alt="Prévia da foto da receita" class="photo-preview" />`
-        : `<div class="photo-placeholder">${icon('box')}</div>`}
-      <label class="photo-upload-btn">
-        ${icon('plus')}<span>${previewSrc ? 'Trocar foto' : 'Escolher foto'}</span>
-        <input type="file" accept="image/*" data-photo-input="${editorKey}" hidden />
-      </label>
-    </div>`;
+        : `<div class="photo-dropzone-icon">${icon('box')}</div>`}
+      <div class="photo-dropzone-text">
+        <strong>${previewSrc ? 'Trocar foto' : 'Arraste uma foto aqui ou clique para enviar'}</strong>
+        <span>PNG ou JPG</span>
+      </div>
+    </label>`;
 }
 
 // ---------------- Modal overlay ----------------
@@ -2485,11 +2488,40 @@ app.addEventListener('change', async (event) => {
   if (!target.dataset.photoInput) return;
   const file = target.files?.[0];
   if (!file) return;
-  const ed = getEditor(target.dataset.photoInput);
+  await loadEditorPhoto(target.dataset.photoInput, file);
+});
+
+async function loadEditorPhoto(editorKey, file) {
+  const ed = getEditor(editorKey);
   const compressed = await compressImageToWebp(file);
   ed.photoFile = compressed;
   ed.photoPreviewUrl = URL.createObjectURL(compressed);
   render();
+}
+
+// Arrastar e soltar uma imagem sobre a dropzone da foto da receita (wizard
+// ou detalhe) — mesmo destino final do input de arquivo (loadEditorPhoto).
+app.addEventListener('dragover', (event) => {
+  const zone = event.target.closest?.('[data-photo-drop]');
+  if (!zone) return;
+  event.preventDefault();
+  zone.classList.add('is-dragover');
+});
+
+app.addEventListener('dragleave', (event) => {
+  const zone = event.target.closest?.('[data-photo-drop]');
+  if (!zone) return;
+  zone.classList.remove('is-dragover');
+});
+
+app.addEventListener('drop', async (event) => {
+  const zone = event.target.closest?.('[data-photo-drop]');
+  if (!zone) return;
+  event.preventDefault();
+  zone.classList.remove('is-dragover');
+  const file = event.dataTransfer?.files?.[0];
+  if (!file || !file.type.startsWith('image/')) return;
+  await loadEditorPhoto(zone.dataset.photoDrop, file);
 });
 
 // Enquanto o usuário está compondo um caractere (acento via dead-key, IME de

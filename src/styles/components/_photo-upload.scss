@@ -1,11 +1,23 @@
 @use '../abstracts' as *;
 
-// Upload de foto de receita, reaproveitado no wizard e no detalhe.
-.photo-upload {
+// Upload de foto de receita, reaproveitado no wizard e no detalhe: a área
+// toda (imagem/ícone + texto) é um único alvo clicável e de arrastar-soltar.
+.photo-dropzone {
   display: flex;
   align-items: center;
   gap: 20px;
   flex-wrap: wrap;
+  padding: 20px;
+  border: 2px dashed $border;
+  border-radius: $radius-md;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+
+  &:hover,
+  &.is-dragover {
+    border-color: $primary-500;
+    background: rgba($primary-500, 0.04);
+  }
 }
 
 .photo-preview {
@@ -14,9 +26,10 @@
   border-radius: $radius-md;
   object-fit: cover;
   border: 1px solid $border;
+  flex-shrink: 0;
 }
 
-.photo-placeholder {
+.photo-dropzone-icon {
   width: 120px;
   height: 120px;
   border-radius: $radius-md;
@@ -25,6 +38,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
 
   .icon {
     width: 32px;
@@ -32,25 +46,19 @@
   }
 }
 
-.photo-upload-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 0.6rem 1rem;
-  border-radius: $radius-sm;
-  background: $surface-tint;
-  color: $primary-500;
-  font-weight: $fw-bold;
-  font-size: 0.9rem;
-  cursor: pointer;
-  transition: filter 0.15s ease;
+.photo-dropzone-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 
-  &:hover {
-    filter: brightness(0.94);
+  strong {
+    color: $primary-500;
+    font-weight: $fw-bold;
+    font-size: 0.95rem;
   }
 
-  .icon {
-    width: 18px;
-    height: 18px;
+  span {
+    color: $ink-400;
+    font-size: 0.85rem;
   }
 }
