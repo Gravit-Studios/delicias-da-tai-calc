@@ -71,3 +71,26 @@ O projeto usa [Supabase](https://supabase.com) para autenticação e persistênc
    - Cadastro reutilizável de ingredientes
    - Histórico dos últimos cálculos de precificação
 
+## Super admin e privacidade (LGPD)
+
+- A tabela `profiles` tem uma coluna `role` (`user` por padrão, `admin`).
+  Para promover o primeiro super admin: peça para a pessoa criar a conta
+  pelo cadastro normal do site e depois rode uma única vez no SQL Editor:
+  ```sql
+  update public.profiles set role = 'admin' where id = '<uuid do usuário>';
+  ```
+  Não existe um jeito de virar admin pelo próprio app — é proposital, para
+  não deixar uma porta de promoção de admin exposta em produção.
+- `supabase/functions/admin-users` é uma Edge Function que faz as ações de
+  administrador (listar/suspender/reativar/excluir usuários) usando a
+  service role key **apenas no servidor** — o navegador nunca tem acesso a
+  essa chave. Publique/atualize com `supabase functions deploy admin-users`
+  ou pelo MCP do Supabase.
+- Qualquer usuário pode excluir a própria conta (direito ao esquecimento da
+  LGPD) pelo menu de perfil → "Atualizar informações pessoais" → "Excluir
+  minha conta". A exclusão remove a conta e, em cascata, todos os dados
+  associados (receitas, ingredientes, despesas, histórico).
+- Trocar a senha exige informar a senha atual (reautenticação) antes de
+  definir a nova. O cadastro exige aceite explícito de um termo de
+  tratamento de dados.
+

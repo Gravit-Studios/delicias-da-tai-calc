@@ -31,6 +31,15 @@
   font-weight: $fw-black;
   font-size: 1.05rem;
   flex-shrink: 0;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+
+  &:hover {
+    box-shadow: none;
+    transform: none;
+  }
 }
 
 .brand-mark {
@@ -121,4 +130,70 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
+}
+
+.profile-menu {
+  position: relative;
+}
+
+.profile-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+
+  &:hover {
+    box-shadow: none;
+    transform: none;
+  }
+
+  .icon {
+    width: 14px;
+    height: 14px;
+    color: $ink-400;
+  }
+}
+
+.profile-dropdown {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  min-width: 240px;
+  background: $surface;
+  border: 1px solid $border;
+  border-radius: $radius-md;
+  box-shadow: $shadow-lift;
+  padding: 8px;
+  display: grid;
+  gap: 2px;
+  z-index: 20;
+}
+
+.profile-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  text-align: left;
+  background: none;
+  color: $ink-700;
+  font-weight: $fw-bold;
+  font-size: 0.9rem;
+  padding: 10px 12px;
+  border-radius: $radius-sm;
+
+  .icon {
+    width: 16px;
+    height: 16px;
+    color: $ink-400;
+  }
+
+  &:hover {
+    background: $surface-tint;
+    box-shadow: none;
+    transform: none;
+  }
 }

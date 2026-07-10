@@ -10,11 +10,32 @@ create extension if not exists "pgcrypto";
 create table if not exists public.profiles (
   id uuid primary key references auth.users (id) on delete cascade,
   full_name text,
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  role text not null default 'user' constraint profiles_role_check check (role in ('user', 'admin'))
 );
 alter table public.profiles enable row level security;
 create policy "Usuário vê o próprio perfil" on public.profiles for select using (auth.uid() = id);
 create policy "Usuário atualiza o próprio perfil" on public.profiles for update using (auth.uid() = id);
+
+-- Função auxiliar (security definer) para checar se o usuário atual é admin,
+-- sem cair em recursão de RLS ao consultar profiles dentro de uma policy de profiles.
+create or replace function public.is_admin()
+returns boolean
+language sql
+security definer
+set search_path = public
+stable
+as $$
+  select exists (
+    select 1 from public.profiles where id = auth.uid() and role = 'admin'
+  );
+$$;
+
+create policy "Admin vê todos os perfis" on public.profiles for select using (public.is_admin());
+
+-- O primeiro super admin é promovido manualmente, uma única vez, depois de
+-- criar a conta pelo cadastro normal do site:
+--   update public.profiles set role = 'admin' where id = '<uuid do usuário>';
 
 create or replace function public.handle_new_user()
 returns trigger language plpgsql security definer set search_path = public as $$

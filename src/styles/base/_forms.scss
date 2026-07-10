@@ -64,3 +64,36 @@ label {
     @include focus-ring($danger-500);
   }
 }
+
+.input-suffix {
+  position: relative;
+
+  input {
+    padding-right: 2.4rem;
+  }
+
+  .suffix {
+    position: absolute;
+    right: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: $ink-400;
+    font-weight: $fw-bold;
+    pointer-events: none;
+  }
+}
+
+.consent-field {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: start;
+  gap: 10px;
+  font-size: $fs-sm;
+  font-weight: $fw-regular;
+  color: $ink-700;
+
+  input[type='checkbox'] {
+    width: auto;
+    margin-top: 3px;
+  }
+}

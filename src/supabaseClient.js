@@ -11,3 +11,5 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     autoRefreshToken: true,
   },
 });
+
+export const FUNCTIONS_URL = `${SUPABASE_URL}/functions/v1`;

@@ -1,0 +1,97 @@
+@use '../abstracts' as *;
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba($ink-900, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  z-index: 50;
+  animation: modal-fade-in 0.15s ease;
+}
+
+.modal-box {
+  width: min(480px, 100%);
+  background: $surface;
+  border-radius: $radius-lg;
+  box-shadow: $shadow-lift;
+  padding: 28px;
+  max-height: 90vh;
+  overflow-y: auto;
+  animation: modal-pop-in 0.2s ease;
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+
+  .icon-btn {
+    padding: 0.5rem;
+  }
+}
+
+.modal-form {
+  display: grid;
+  gap: 14px;
+}
+
+.modal-danger-zone {
+  margin-top: 22px;
+  padding-top: 18px;
+  border-top: 1px solid $secondary-200;
+  display: grid;
+  gap: 10px;
+}
+
+.modal-success {
+  text-align: center;
+  display: grid;
+  justify-items: center;
+  gap: 14px;
+  padding: 40px 32px;
+}
+
+.success-check {
+  width: 68px;
+  height: 68px;
+  border-radius: 50%;
+  background: $tertiary-100;
+  color: $success-500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  .icon {
+    width: 34px;
+    height: 34px;
+    stroke-width: 3;
+    stroke-dasharray: 24;
+    stroke-dashoffset: 24;
+    animation: success-check-draw 0.4s ease 0.1s forwards;
+  }
+}
+
+.modal-success p {
+  font-weight: $fw-bold;
+  color: $ink-900;
+  margin: 0;
+}
+
+@keyframes modal-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes modal-pop-in {
+  from { opacity: 0; transform: translateY(8px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes success-check-draw {
+  to { stroke-dashoffset: 0; }
+}

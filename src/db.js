@@ -1,4 +1,62 @@
-import { supabase } from './supabaseClient.js';
+import { supabase, FUNCTIONS_URL } from './supabaseClient.js';
+
+// ---------- Perfil ----------
+
+export async function getProfile(userId) {
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('full_name, role')
+    .eq('id', userId)
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+export async function updateProfile(userId, fields) {
+  const { data, error } = await supabase.from('profiles').update(fields).eq('id', userId).select().single();
+  if (error) throw error;
+  return data;
+}
+
+// ---------- Administração de usuários (via Edge Function, service role no servidor) ----------
+
+async function callAdminFunction(action, extra = {}) {
+  const { data: sessionData } = await supabase.auth.getSession();
+  const token = sessionData.session?.access_token;
+  if (!token) throw new Error('Sessão expirada. Faça login novamente.');
+
+  const response = await fetch(`${FUNCTIONS_URL}/admin-users`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ action, ...extra }),
+  });
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(body.error || 'Falha ao executar ação administrativa.');
+  return body;
+}
+
+export function adminListUsers() {
+  return callAdminFunction('list').then((res) => res.users);
+}
+
+export function adminSuspendUser(userId) {
+  return callAdminFunction('suspend', { userId });
+}
+
+export function adminReactivateUser(userId) {
+  return callAdminFunction('reactivate', { userId });
+}
+
+export function adminDeleteUser(userId) {
+  return callAdminFunction('delete', { userId });
+}
+
+export function deleteOwnAccount() {
+  return callAdminFunction('self-delete');
+}
 
 // ---------- Ingredientes/embalagens (base de Produtos) ----------
 
@@ -24,6 +82,24 @@ export async function createIngredient(userId, ingredient) {
       category: ingredient.category ?? '',
       brand: ingredient.brand ?? '',
     })
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+export async function updateIngredient(id, ingredient) {
+  const { data, error } = await supabase
+    .from('ingredients')
+    .update({
+      name: ingredient.name,
+      package_price: ingredient.packagePrice,
+      package_amount: ingredient.packageAmount,
+      unit: ingredient.unit,
+      category: ingredient.category ?? '',
+      brand: ingredient.brand ?? '',
+    })
+    .eq('id', id)
     .select()
     .single();
   if (error) throw error;

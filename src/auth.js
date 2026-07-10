@@ -31,3 +31,18 @@ export function onAuthStateChange(callback) {
   const { data } = supabase.auth.onAuthStateChange((_event, session) => callback(session));
   return data.subscription;
 }
+
+// Exige a senha atual antes de trocar (evita que uma sessão aberta em outro
+// lugar troque a senha sem o usuário confirmar quem ele é).
+export async function changePassword(email, currentPassword, newPassword) {
+  const { error: verifyError } = await supabase.auth.signInWithPassword({ email, password: currentPassword });
+  if (verifyError) throw new Error('Senha atual incorreta.');
+
+  const { error } = await supabase.auth.updateUser({ password: newPassword });
+  if (error) throw error;
+}
+
+export async function updateEmail(newEmail) {
+  const { error } = await supabase.auth.updateUser({ email: newEmail });
+  if (error) throw error;
+}
