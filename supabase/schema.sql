@@ -23,7 +23,9 @@ create table if not exists public.profiles (
   link_99_url text,
   keeta_url text,
   created_at timestamptz not null default now(),
-  role text not null default 'user' constraint profiles_role_check check (role in ('user', 'admin'))
+  role text not null default 'user' constraint profiles_role_check check (role in ('user', 'admin')),
+  approval_status text not null default 'pending'
+    constraint profiles_approval_status_check check (approval_status in ('pending', 'approved', 'rejected'))
 );
 alter table public.profiles enable row level security;
 create policy "Usuário vê o próprio perfil" on public.profiles for select using (auth.uid() = id);

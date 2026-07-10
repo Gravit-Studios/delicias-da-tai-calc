@@ -60,6 +60,17 @@
   color: $ink-400;
 }
 
+.pending-approval-panel {
+  max-width: 480px;
+  margin: 60px auto;
+  text-align: center;
+
+  p:last-child {
+    color: $ink-700;
+    margin: 0;
+  }
+}
+
 .delivery-field-list {
   display: grid;
   gap: 16px;

@@ -97,7 +97,7 @@ const state = {
   ingredientColumnFilters: {},
   openIngredientFilterColumn: null,
 
-  profile: { fullName: '', role: 'user' },
+  profile: { fullName: '', role: 'user', approvalStatus: 'approved' },
   settings: { fullName: '', email: '' },
   company: {
     name: '', cnpj: '',
@@ -107,6 +107,7 @@ const state = {
   cepLookup: { loading: false, error: '' },
   profileMenuOpen: false,
   mobileMenuOpen: false,
+  adminAlertsOpen: false,
   successModal: '',
   activeModal: null,
   openCombobox: null,
@@ -179,20 +180,29 @@ async function loadUserData() {
   render();
   try {
     const userId = state.session.user.id;
-    const [ingredients, products, expenseCategories, profitTiers, suppliers, profile] = await Promise.all([
+    const profile = await db.getProfile(userId);
+    state.profile = {
+      fullName: profile.full_name || '',
+      role: profile.role || 'user',
+      approvalStatus: profile.approval_status || 'approved',
+    };
+    // Conta ainda não aprovada pelo super admin: não carrega o resto dos
+    // dados nem libera o app — só a tela de "aguardando aprovação".
+    if (state.profile.role !== 'admin' && state.profile.approvalStatus !== 'approved') {
+      return;
+    }
+    const [ingredients, products, expenseCategories, profitTiers, suppliers] = await Promise.all([
       db.listIngredients(userId),
       db.listProducts(userId),
       db.ensureDefaultExpenseCategories(userId),
       db.ensureDefaultProfitTiers(userId),
       db.listSuppliers(userId),
-      db.getProfile(userId),
     ]);
     state.savedIngredients = ingredients;
     state.savedProducts = products;
     state.expenseCategories = expenseCategories;
     state.profitTiers = profitTiers;
     state.suppliers = suppliers;
-    state.profile = { fullName: profile.full_name || '', role: profile.role || 'user' };
     state.settings = { fullName: state.profile.fullName, email: state.session.user.email };
     state.company = {
       name: profile.company_name || '',
@@ -290,12 +300,15 @@ async function loadAdminUsers() {
 // ação reversível e de baixo risco, não precisa de confirmação.
 async function handleAdminAction(action, userId) {
   try {
+    if (action === 'approve') await db.adminApproveUser(userId);
     if (action === 'suspend') await db.adminSuspendUser(userId);
     if (action === 'reactivate') await db.adminReactivateUser(userId);
     if (action === 'delete') await db.adminDeleteUser(userId);
     await loadAdminUsers();
     showSuccess(
-      action === 'suspend' ? 'Usuário suspenso.' : action === 'reactivate' ? 'Usuário reativado.' : 'Usuário excluído.',
+      action === 'approve' ? 'Acesso aprovado.'
+        : action === 'suspend' ? 'Usuário suspenso.'
+          : action === 'reactivate' ? 'Usuário reativado.' : 'Usuário excluído.',
     );
   } catch (error) {
     state.admin.error = error.message;
@@ -326,7 +339,7 @@ onAuthStateChange((session) => {
     state.supplierSearch = '';
     state.ingredientColumnFilters = {};
     state.openIngredientFilterColumn = null;
-    state.profile = { fullName: '', role: 'user' };
+    state.profile = { fullName: '', role: 'user', approvalStatus: 'approved' };
     state.settings = { fullName: '', email: '' };
     state.settingsSnapshot = '{}';
     state.company = {
@@ -344,7 +357,7 @@ onAuthStateChange((session) => {
 
 // ---------------- Modais (sucesso / edição) ----------------
 
-function showSuccess(message) {
+function showSuccess(message, duration = 1800) {
   state.successModal = message;
   render();
   setTimeout(() => {
@@ -352,7 +365,7 @@ function showSuccess(message) {
       state.successModal = '';
       render();
     }
-  }, 1800);
+  }, duration);
 }
 
 // Cada re-render (a cada tecla digitada, por exemplo) recria o DOM do modal
@@ -446,6 +459,7 @@ const ICON_PATHS = {
   clipboardList: '<rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v1"/><path d="M8.5 11h7M8.5 15h7M8.5 8h4"/>',
   settings: '<circle cx="12" cy="12" r="3"/><path d="M19.4 13a7.6 7.6 0 0 0 0-2l2-1.5-2-3.5-2.4 1a7.4 7.4 0 0 0-1.7-1L15 3h-6l-.3 2.5a7.4 7.4 0 0 0-1.7 1l-2.4-1-2 3.5L4.6 11a7.6 7.6 0 0 0 0 2l-2 1.5 2 3.5 2.4-1a7.4 7.4 0 0 0 1.7 1L9 21h6l.3-2.5a7.4 7.4 0 0 0 1.7-1l2.4 1 2-3.5Z"/>',
   whisk: '<path d="M12 2v6"/><path d="M8 8c0 6 1.5 10 4 10s4-4 4-10"/><path d="M9.5 8c0 5 1 9 2.5 9s2.5-4 2.5-9"/><path d="M12 18v4"/>',
+  bell: '<path d="M6 9a6 6 0 0 1 12 0c0 5 2 6 2 6H4s2-1 2-6Z"/><path d="M10 20a2 2 0 0 0 4 0"/>',
 };
 
 function icon(name, extraClass = '') {
@@ -1472,15 +1486,17 @@ function renderEmpresaPage() {
     </div>`;
 }
 
-function renderAdminUsersList() {
-  if (!state.admin.users.length) return emptyState('Nenhum usuário encontrado.', false);
-  return `<ul class="saved-list">${state.admin.users.map((u) => {
+function renderAdminUsersList(users = state.admin.users) {
+  if (!users.length) return emptyState('Nenhum usuário encontrado.', false);
+  return `<ul class="saved-list">${users.map((u) => {
     const banned = u.bannedUntil && new Date(u.bannedUntil) > new Date();
+    const pending = u.approvalStatus === 'pending';
     return `
     <li>
-      <span>${escapeHtml(u.fullName || u.email)} <small class="muted">${escapeHtml(u.email)}${u.role === 'admin' ? ' · admin' : ''}${banned ? ' · suspenso' : ''}</small></span>
+      <span>${escapeHtml(u.fullName || u.email)} <small class="muted">${escapeHtml(u.email)}${u.role === 'admin' ? ' · admin' : ''}${pending ? ' · aguardando aprovação' : ''}${banned ? ' · suspenso' : ''}</small></span>
       <span class="saved-list-actions">
-        ${banned
+        ${pending ? `<button type="button" class="primary" data-action="admin-approve" data-id="${u.id}">Aprovar</button>` : ''}
+        ${pending ? '' : banned
           ? `<button type="button" class="ghost" data-action="admin-reactivate" data-id="${u.id}">Reativar</button>`
           : `<button type="button" class="ghost" data-action="admin-confirm-suspend" data-id="${u.id}">Suspender</button>`}
         ${u.role === 'admin' ? '' : `<button type="button" class="danger" data-action="admin-confirm-delete" data-id="${u.id}">Excluir</button>`}
@@ -1563,9 +1579,65 @@ function mobileDrawer(displayName) {
     </div>`;
 }
 
+// Conta recém-criada, ainda não aprovada pelo super admin: mostra só uma
+// tela de espera (com opção de sair) em vez do app inteiro.
+function pendingApprovalHtml(displayName) {
+  return `
+    <div class="shell">
+      <header class="navbar">
+        <div class="navbar-inner">
+          <button type="button" class="brand" data-action="goto" data-route="inicio">
+            <span class="brand-mark"></span> Sweet Price
+          </button>
+          <div class="navbar-user">
+            <span class="navbar-email">${escapeHtml(displayName)}</span>
+            <span class="navbar-divider" aria-hidden="true"></span>
+            <button type="button" class="text-link" data-action="logout">Sair</button>
+          </div>
+        </div>
+      </header>
+      <div class="main-area">
+        <div class="page">
+          <div class="pending-approval-panel panel">
+            <p class="eyebrow">Cadastro recebido</p>
+            <h2>Aguardando aprovação</h2>
+            <p>Sua conta foi criada com sucesso. Um administrador do Sweet Price precisa aprovar o seu acesso antes de você poder usar o app — isso costuma ser rápido.</p>
+          </div>
+        </div>
+      </div>
+      ${siteFooter()}
+    </div>`;
+}
+
+// Ícone de sino no navbar do super admin, com contagem de contas aguardando
+// aprovação e um atalho para aprovar direto do dropdown.
+function adminAlertsMenu() {
+  const pendingUsers = state.admin.users.filter((u) => u.approvalStatus === 'pending');
+  return `
+    <div class="alerts-menu">
+      <button type="button" class="alerts-trigger" data-action="toggle-admin-alerts" aria-label="Avisos">
+        ${icon('bell')}
+        ${pendingUsers.length > 0 ? `<span class="alerts-badge">${pendingUsers.length}</span>` : ''}
+      </button>
+      ${state.adminAlertsOpen ? `
+        <div class="profile-dropdown alerts-dropdown">
+          ${pendingUsers.length === 0
+            ? '<p class="alerts-empty">Nenhum aviso no momento.</p>'
+            : pendingUsers.map((u) => `
+              <div class="alerts-item">
+                <span>${escapeHtml(u.fullName || u.email)} <small class="muted">quer acesso</small></span>
+                <button type="button" class="primary" data-action="admin-approve" data-id="${u.id}">Aprovar</button>
+              </div>`).join('')}
+        </div>` : ''}
+    </div>`;
+}
+
 function shellHtml() {
   const displayName = state.profile.fullName || nameFromEmail(state.session.user.email);
   const isAdmin = state.profile.role === 'admin';
+  if (!isAdmin && state.profile.approvalStatus !== 'approved') {
+    return pendingApprovalHtml(displayName);
+  }
   return `
     <div class="shell">
       <header class="navbar">
@@ -1583,6 +1655,7 @@ function shellHtml() {
             ${navItem('empresa', 'Empresa')}
           </ul>`}
           <div class="navbar-user">
+            ${isAdmin ? adminAlertsMenu() : ''}
             <div class="profile-menu">
               <button type="button" class="profile-trigger" data-action="toggle-profile-menu">
                 <span class="navbar-email">${escapeHtml(displayName)}</span>${icon('chevronDown')}
@@ -1718,7 +1791,7 @@ async function handleAuthSubmit(form) {
       form.reset();
       state.authMode = 'signin';
       state.authLoading = false;
-      showSuccess('Conta criada! Verifique seu e-mail para confirmar o acesso, se necessário.');
+      showSuccess('Conta criada! Verifique seu e-mail para confirmar o acesso e aguarde a aprovação de um administrador para começar a usar o app.', 3200);
       return;
     }
     await signIn(email, password);
@@ -2675,6 +2748,10 @@ app.addEventListener('click', (event) => {
       state.profileMenuOpen = !state.profileMenuOpen;
       render();
       break;
+    case 'toggle-admin-alerts':
+      state.adminAlertsOpen = !state.adminAlertsOpen;
+      render();
+      break;
     case 'toggle-mobile-menu':
       state.mobileMenuOpen = !state.mobileMenuOpen;
       render();
@@ -2685,6 +2762,9 @@ app.addEventListener('click', (event) => {
       break;
     case 'open-delete-account':
       openDeleteAccountModal();
+      break;
+    case 'admin-approve':
+      handleAdminAction('approve', id);
       break;
     case 'admin-confirm-suspend': {
       const user = state.admin.users.find((u) => u.id === id);
@@ -2726,6 +2806,10 @@ app.addEventListener('click', (event) => {
 app.addEventListener('click', (event) => {
   if (state.profileMenuOpen && !event.target.closest('.profile-menu')) {
     state.profileMenuOpen = false;
+    render();
+  }
+  if (state.adminAlertsOpen && !event.target.closest('.alerts-menu')) {
+    state.adminAlertsOpen = false;
     render();
   }
   if (state.openCombobox && !event.target.closest('.combobox')) {

@@ -5,6 +5,7 @@
 //
 // Ações:
 //   - list          (admin)  → lista usuários + papel
+//   - approve       (admin)  → libera o acesso de uma conta pendente de aprovação
 //   - suspend       (admin)  → bane um usuário (não pode banir a si mesmo)
 //   - reactivate    (admin)  → remove o banimento
 //   - delete        (admin)  → exclui um usuário (não pode excluir a si mesmo)
@@ -86,7 +87,7 @@ Deno.serve(async (req) => {
 
     const { data: profiles, error: profilesError } = await admin
       .from('profiles')
-      .select('id, full_name, role');
+      .select('id, full_name, role, approval_status');
     if (profilesError) return json({ error: profilesError.message }, 500);
     const profileById = new Map(profiles.map((p) => [p.id, p]));
 
@@ -95,6 +96,7 @@ Deno.serve(async (req) => {
       email: u.email,
       fullName: profileById.get(u.id)?.full_name ?? null,
       role: profileById.get(u.id)?.role ?? 'user',
+      approvalStatus: profileById.get(u.id)?.approval_status ?? 'approved',
       createdAt: u.created_at,
       lastSignInAt: u.last_sign_in_at,
       bannedUntil: u.banned_until ?? null,
@@ -106,6 +108,15 @@ Deno.serve(async (req) => {
   if (!targetUserId) return json({ error: 'userId é obrigatório.' }, 400);
   if (targetUserId === caller.id) {
     return json({ error: 'Você não pode executar esta ação na própria conta.' }, 400);
+  }
+
+  if (action === 'approve') {
+    const { error } = await admin
+      .from('profiles')
+      .update({ approval_status: 'approved' })
+      .eq('id', targetUserId);
+    if (error) return json({ error: error.message }, 400);
+    return json({ ok: true });
   }
 
   if (action === 'suspend') {

@@ -9,7 +9,7 @@ export async function getProfile(userId) {
   const { data, error } = await supabase
     .from('profiles')
     .select(`
-      full_name, company_name, cnpj, role,
+      full_name, company_name, cnpj, role, approval_status,
       cep, street, neighborhood, city, state, address_number, complement,
       ifood_url, link_99_url, keeta_url
     `)
@@ -17,7 +17,7 @@ export async function getProfile(userId) {
     .maybeSingle();
   if (error) throw error;
   return data ?? {
-    full_name: null, company_name: null, cnpj: null, role: 'user',
+    full_name: null, company_name: null, cnpj: null, role: 'user', approval_status: 'approved',
     cep: null, street: null, neighborhood: null, city: null, state: null, address_number: null, complement: null,
     ifood_url: null, link_99_url: null, keeta_url: null,
   };
@@ -51,6 +51,10 @@ async function callAdminFunction(action, extra = {}) {
 
 export function adminListUsers() {
   return callAdminFunction('list').then((res) => res.users);
+}
+
+export function adminApproveUser(userId) {
+  return callAdminFunction('approve', { userId });
 }
 
 export function adminSuspendUser(userId) {
