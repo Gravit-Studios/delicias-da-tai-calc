@@ -908,13 +908,13 @@ function isHttpUrl(value) {
 // configuração (Empresa) quanto nos atalhos da home. Cor + marca dão um
 // selo visual reconhecível sem depender de logos externos.
 const DELIVERY_BRANDS = [
-  { key: 'ifoodUrl', label: 'iFood', mark: 'iF', color: '#EA1D2C' },
-  { key: 'link99Url', label: '99', mark: '99', color: '#FF6B00' },
-  { key: 'keetaUrl', label: 'Keeta', mark: 'K', color: '#0F172A' },
+  { key: 'ifoodUrl', label: 'iFood', logo: '/assets/logo-ifood.png' },
+  { key: 'link99Url', label: '99', logo: '/assets/logo-99-food.png' },
+  { key: 'keetaUrl', label: 'Keeta', logo: '/assets/logo-keeta.png' },
 ];
 
 function deliveryBadge(brand, extraClass = '') {
-  return `<span class="delivery-badge ${extraClass}" style="background:${brand.color};" aria-hidden="true">${brand.mark}</span>`;
+  return `<img class="delivery-badge ${extraClass}" src="${brand.logo}" alt="${escapeHtml(brand.label)}" />`;
 }
 
 function deliveryShortcuts() {

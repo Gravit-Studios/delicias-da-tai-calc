@@ -99,25 +99,17 @@
   }
 }
 
-// Selo colorido por marca de delivery (iFood, 99, Keeta...) — como não há
-// logos oficiais disponíveis, cor + sigla dão o reconhecimento visual.
+// Selo com o logo de cada app de delivery (iFood, 99, Keeta...).
 // Fonte única: DELIVERY_BRANDS (main.js), usado aqui e nos campos da Empresa.
 .delivery-badge {
   flex-shrink: 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  color: #fff;
-  font-weight: $fw-black;
-  font-size: 0.85rem;
-  letter-spacing: -0.02em;
+  object-fit: cover;
 }
 
 .delivery-badge-sm {
   width: 28px;
   height: 28px;
-  font-size: 0.7rem;
 }
