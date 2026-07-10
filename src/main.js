@@ -2,6 +2,7 @@ import { calculatePricing, formatCurrency } from './pricing.js';
 import { signUp, signIn, signOut, getSession, onAuthStateChange, changePassword, updateEmail } from './auth.js';
 import { parseRoute, navigate, onRouteChange } from './router.js';
 import { compressImageToWebp } from './imageCompression.js';
+import { lookupCep } from './cep.js';
 import * as db from './db.js';
 
 // ---------------- Helpers de estado / formatação ----------------
@@ -90,7 +91,12 @@ const state = {
 
   profile: { fullName: '', role: 'user' },
   settings: { fullName: '', email: '' },
-  company: { name: '', cnpj: '', address: '', ifoodUrl: '', link99Url: '', keetaUrl: '' },
+  company: {
+    name: '', cnpj: '',
+    cep: '', street: '', neighborhood: '', city: '', state: '', number: '', complement: '',
+    ifoodUrl: '', link99Url: '', keetaUrl: '',
+  },
+  cepLookup: { loading: false, error: '' },
   profileMenuOpen: false,
   mobileMenuOpen: false,
   successModal: '',
@@ -176,7 +182,13 @@ async function loadUserData() {
     state.company = {
       name: profile.company_name || '',
       cnpj: profile.cnpj || '',
-      address: profile.address || '',
+      cep: profile.cep || '',
+      street: profile.street || '',
+      neighborhood: profile.neighborhood || '',
+      city: profile.city || '',
+      state: profile.state || '',
+      number: profile.address_number || '',
+      complement: profile.complement || '',
       ifoodUrl: profile.ifood_url || '',
       link99Url: profile.link_99_url || '',
       keetaUrl: profile.keeta_url || '',
@@ -303,8 +315,13 @@ onAuthStateChange((session) => {
     state.profile = { fullName: '', role: 'user' };
     state.settings = { fullName: '', email: '' };
     state.settingsSnapshot = '{}';
-    state.company = { name: '', cnpj: '', address: '', ifoodUrl: '', link99Url: '', keetaUrl: '' };
+    state.company = {
+      name: '', cnpj: '',
+      cep: '', street: '', neighborhood: '', city: '', state: '', number: '', complement: '',
+      ifoodUrl: '', link99Url: '', keetaUrl: '',
+    };
     state.companySnapshot = '{}';
+    state.cepLookup = { loading: false, error: '' };
     state.profileMenuOpen = false;
     state.mobileMenuOpen = false;
   }
@@ -779,20 +796,24 @@ function addRecipeIngredientModal(data) {
   if (!draft) return '';
   const max = maxUsedAmount(draft);
   return `
-    <div class="modal-box modal-box-wide">
+    <div class="modal-box">
       <div class="modal-header"><h3>Adicionar ingrediente</h3><button type="button" class="icon-btn ghost" data-action="close-modal">${icon('close')}</button></div>
       ${data.error ? `<p class="auth-error">${escapeHtml(data.error)}</p>` : ''}
-      <div class="ingredient-grid header-row" aria-hidden="true"><span>Ingrediente</span><span>Preço da compra</span><span>Qtd. comprada</span><span>Qtd. usada</span><span>Un.</span><span></span></div>
-      <div class="ingredient-grid">
-        ${ingredientNameCell(data.editorKey, draft)}
-        <input aria-label="Preço da compra" inputmode="decimal" placeholder="R$ 0,00" data-editor="${data.editorKey}" data-ingredient="${draft.id}" data-ingredient-field="packagePrice" value="${escapeHtml(draft.packagePrice)}" />
-        <input aria-label="Quantidade comprada" inputmode="decimal" data-editor="${data.editorKey}" data-ingredient="${draft.id}" data-ingredient-field="packageAmount" value="${escapeHtml(draft.packageAmount)}" />
-        <input aria-label="Quantidade usada" inputmode="decimal" placeholder="${max ? `Máx. ${max}` : 'Obrigatório'}" data-editor="${data.editorKey}" data-ingredient="${draft.id}" data-ingredient-field="usedAmount" value="${escapeHtml(draft.usedAmount)}" />
-        <input aria-label="Unidade" data-editor="${data.editorKey}" data-ingredient="${draft.id}" data-ingredient-field="unit" value="${escapeHtml(draft.unit)}" />
-        <button type="button" data-action="confirm-add-recipe-ingredient">Inserir</button>
-      </div>
-      <div class="save-actions">
-        <button type="button" class="ghost" data-action="close-modal">Cancelar</button>
+      <div class="modal-form">
+        <label>Ingrediente
+          <select data-editor="${data.editorKey}" data-ingredient="${draft.id}" data-ingredient-field="name">
+            <option value="">Selecione um ingrediente</option>
+            ${state.savedIngredients.map((si) => `<option value="${escapeHtml(si.name)}" ${draft.name === si.name ? 'selected' : ''}>${escapeHtml(si.name)}</option>`).join('')}
+          </select>
+        </label>
+        <label>Preço da compra<input aria-label="Preço da compra" inputmode="decimal" placeholder="R$ 0,00" data-editor="${data.editorKey}" data-ingredient="${draft.id}" data-ingredient-field="packagePrice" value="${escapeHtml(draft.packagePrice)}" /></label>
+        <label>Qtd. comprada<input aria-label="Quantidade comprada" inputmode="decimal" data-editor="${data.editorKey}" data-ingredient="${draft.id}" data-ingredient-field="packageAmount" value="${escapeHtml(draft.packageAmount)}" /></label>
+        <label>Qtd. usada<input aria-label="Quantidade usada" inputmode="decimal" placeholder="${max ? `Máx. ${max}` : 'Obrigatório'}" data-editor="${data.editorKey}" data-ingredient="${draft.id}" data-ingredient-field="usedAmount" value="${escapeHtml(draft.usedAmount)}" /></label>
+        <label>Unidade<input aria-label="Unidade" data-editor="${data.editorKey}" data-ingredient="${draft.id}" data-ingredient-field="unit" value="${escapeHtml(draft.unit)}" /></label>
+        <div class="save-actions">
+          <button type="button" data-action="confirm-add-recipe-ingredient">Inserir</button>
+          <button type="button" class="ghost" data-action="close-modal">Cancelar</button>
+        </div>
       </div>
     </div>`;
 }
@@ -1203,8 +1224,25 @@ function renderEmpresaPage() {
         <label>Nome<input name="companyName" data-company-field="name" value="${escapeHtml(state.company.name)}" /></label>
         <label>CNPJ<input name="cnpj" data-company-field="cnpj" value="${escapeHtml(state.company.cnpj)}" placeholder="00.000.000/0000-00" /></label>
       </div>
+    </div>
+    <div class="panel">
+      <h3>Endereço</h3>
+      <div class="field-grid">
+        <label>CEP<input name="cep" data-company-field="cep" value="${escapeHtml(state.company.cep)}" placeholder="00000-000" maxlength="9" /></label>
+      </div>
+      ${state.cepLookup.loading ? '<p class="form-hint">Buscando endereço...</p>' : ''}
+      ${state.cepLookup.error ? `<p class="form-error">${escapeHtml(state.cepLookup.error)}</p>` : ''}
       <div class="field-grid" style="margin-top:16px;">
-        <label>Endereço<input name="address" data-company-field="address" value="${escapeHtml(state.company.address)}" /></label>
+        <label>Logradouro<input name="street" data-company-field="street" value="${escapeHtml(state.company.street)}" /></label>
+        <label>Bairro<input name="neighborhood" data-company-field="neighborhood" value="${escapeHtml(state.company.neighborhood)}" /></label>
+      </div>
+      <div class="field-grid" style="margin-top:16px;">
+        <label>Cidade<input name="city" data-company-field="city" value="${escapeHtml(state.company.city)}" /></label>
+        <label>Estado (UF)<input name="state" data-company-field="state" value="${escapeHtml(state.company.state)}" maxlength="2" /></label>
+      </div>
+      <div class="field-grid" style="margin-top:16px;">
+        <label>Número<input name="number" data-company-field="number" value="${escapeHtml(state.company.number)}" /></label>
+        <label>Complemento<input name="complement" data-company-field="complement" value="${escapeHtml(state.company.complement)}" /></label>
       </div>
     </div>
     <div class="panel">
@@ -1743,7 +1781,13 @@ async function handleSaveCompany() {
     await db.updateProfile(state.session.user.id, {
       company_name: draft.name,
       cnpj: draft.cnpj,
-      address: draft.address,
+      cep: draft.cep,
+      street: draft.street,
+      neighborhood: draft.neighborhood,
+      city: draft.city,
+      state: draft.state,
+      address_number: draft.number,
+      complement: draft.complement,
       ifood_url: draft.ifoodUrl,
       link_99_url: draft.link99Url,
       keeta_url: draft.keetaUrl,
@@ -1755,6 +1799,24 @@ async function handleSaveCompany() {
     state.statusMessage = `Erro ao salvar: ${error.message}`;
     render();
   }
+}
+
+// Busca o endereço pelo CEP (ViaCEP) e preenche logradouro/bairro/cidade/UF
+// automaticamente; número e complemento continuam manuais.
+async function handleCepLookup(cepDigits) {
+  state.cepLookup = { loading: true, error: '' };
+  render();
+  try {
+    const result = await lookupCep(cepDigits);
+    state.company.street = result.street;
+    state.company.neighborhood = result.neighborhood;
+    state.company.city = result.city;
+    state.company.state = result.state;
+    state.cepLookup = { loading: false, error: '' };
+  } catch (error) {
+    state.cepLookup = { loading: false, error: error.message };
+  }
+  render();
 }
 
 async function handleChangePasswordSubmit(form) {
@@ -1915,7 +1977,20 @@ app.addEventListener('change', async (event) => {
   render();
 });
 
+// Enquanto o usuário está compondo um caractere (acento via dead-key, IME de
+// outros idiomas...), o navegador ainda não decidiu o caractere final. Se a
+// gente re-renderizar (substitui o <input> por um novo nó) no meio dessa
+// composição, ela quebra e sobra lixo tipo "'i" em vez de "í" — e a troca de
+// nó também é o que fazia a tela "piscar" ao digitar. Então ignoramos os
+// eventos de input enquanto `isComposing` estiver true; o evento final de
+// input (que sempre vem logo depois do compositionend) já chega com o
+// caractere certo e dispara o render normalmente.
+let isComposing = false;
+app.addEventListener('compositionstart', () => { isComposing = true; });
+app.addEventListener('compositionend', () => { isComposing = false; });
+
 app.addEventListener('input', (event) => {
+  if (isComposing) return;
   const target = event.target;
   if (target.dataset.ingredientField) {
     const ed = getEditor(target.dataset.editor);
@@ -1980,8 +2055,13 @@ app.addEventListener('input', (event) => {
     return;
   }
   if (target.dataset.companyField) {
-    state.company[target.dataset.companyField] = target.value;
+    const field = target.dataset.companyField;
+    state.company[field] = target.value;
     render();
+    if (field === 'cep') {
+      const digits = target.value.replace(/\D/g, '');
+      if (digits.length === 8) handleCepLookup(digits);
+    }
   }
 });
 

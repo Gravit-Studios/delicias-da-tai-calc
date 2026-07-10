@@ -8,11 +8,19 @@ export async function getProfile(userId) {
   // inteiro dos dados do usuário.
   const { data, error } = await supabase
     .from('profiles')
-    .select('full_name, company_name, cnpj, address, ifood_url, link_99_url, keeta_url, role')
+    .select(`
+      full_name, company_name, cnpj, role,
+      cep, street, neighborhood, city, state, address_number, complement,
+      ifood_url, link_99_url, keeta_url
+    `)
     .eq('id', userId)
     .maybeSingle();
   if (error) throw error;
-  return data ?? { full_name: null, company_name: null, cnpj: null, address: null, ifood_url: null, link_99_url: null, keeta_url: null, role: 'user' };
+  return data ?? {
+    full_name: null, company_name: null, cnpj: null, role: 'user',
+    cep: null, street: null, neighborhood: null, city: null, state: null, address_number: null, complement: null,
+    ifood_url: null, link_99_url: null, keeta_url: null,
+  };
 }
 
 export async function updateProfile(userId, fields) {
