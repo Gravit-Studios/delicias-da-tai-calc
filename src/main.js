@@ -1314,9 +1314,9 @@ function authHtml() {
       <div class="auth-form-side">
         <div class="auth-brand"><span class="brand-mark"></span> Delícias da Tai</div>
         <div class="auth-form-inner">
-          <p class="eyebrow">${isSignUp ? 'Comece agora' : 'Bem-vinda de volta'}</p>
-          <h1 class="auth-title">${isSignUp ? 'Crie sua conta' : 'Entre na sua conta'}</h1>
-          <p class="auth-subtitle">Calcule o preço ideal dos seus doces com base no custo real de ingredientes e despesas.</p>
+          <p class="eyebrow">${isSignUp ? 'Comece agora' : 'Bem-vindo de volta'}</p>
+          <h1 class="auth-title">${isSignUp ? 'Crie sua conta' : 'Acesse sua conta'}</h1>
+          <p class="auth-subtitle">${isSignUp ? 'Calcule o preço ideal dos seus doces com base no custo real de ingredientes e despesas.' : 'O parceiro online da sua confeitaria.'}</p>
           <form data-form="auth">
             ${isSignUp ? '<label>Nome<input name="fullName" type="text" required /></label><label>Nome da empresa<input name="companyName" type="text" /></label>' : ''}
             <label>E-mail<input name="email" type="email" required /></label>
