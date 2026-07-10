@@ -15,6 +15,15 @@
   gap: 16px;
   align-items: center;
   margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+// Grupo de botões de ação no header padrão (usado quando há mais de um botão,
+// como Voltar/Excluir/Salvar na edição de uma receita).
+.section-header-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .status-message {

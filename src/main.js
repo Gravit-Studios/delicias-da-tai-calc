@@ -79,6 +79,10 @@ const state = {
   statusMessage: '',
   expensesSnapshot: '[]',
   tiersSnapshot: '[]',
+  detailSnapshot: '{}',
+  pendingAction: null,
+  ingredientSearch: '',
+  supplierSearch: '',
 
   profile: { fullName: '', role: 'user' },
   profileMenuOpen: false,
@@ -196,6 +200,7 @@ async function ensureDetailLoaded(id) {
       photoPreviewUrl: '',
       errors: {},
     };
+    state.detailSnapshot = detailSnapshotOf(state.detail);
   } catch (error) {
     state.statusMessage = `Erro ao abrir receita: ${error.message}`;
     state.detail = { ...defaultDetail(), loading: false };
@@ -273,6 +278,8 @@ onAuthStateChange((session) => {
     state.expenseCategories = [];
     state.profitTiers = [];
     state.suppliers = [];
+    state.ingredientSearch = '';
+    state.supplierSearch = '';
     state.profile = { fullName: '', role: 'user' };
     state.profileMenuOpen = false;
   }
@@ -299,7 +306,45 @@ function openModal(type, data = {}) {
 
 function closeModal() {
   state.activeModal = null;
+  state.pendingAction = null;
   render();
+}
+
+// Compara o editor de detalhe da receita com o snapshot carregado do banco
+// para saber se há alterações não salvas (mesma ideia de despesas/lucro).
+function detailSnapshotOf(editor) {
+  return JSON.stringify({
+    productName: editor.productName,
+    yieldAmount: editor.yieldAmount,
+    ingredients: editor.ingredients,
+    photoChanged: Boolean(editor.photoFile),
+  });
+}
+
+// Só as páginas com um "Salvar alterações" persistente entram na checagem:
+// despesas, lucro e edição de receita.
+function hasUnsavedChanges() {
+  if (state.route.path === 'despesas') return JSON.stringify(state.expenseCategories) !== state.expensesSnapshot;
+  if (state.route.path === 'lucro') return JSON.stringify(state.profitTiers) !== state.tiersSnapshot;
+  if (state.route.path === 'produto') return detailSnapshotOf(state.detail) !== state.detailSnapshot;
+  return false;
+}
+
+// Envolve qualquer ação que tire o usuário da página atual (navegar, sair):
+// se há alterações não salvas, pede confirmação antes de executar.
+function requestNavigation(run) {
+  if (hasUnsavedChanges()) {
+    state.pendingAction = run;
+    openModal('confirm-leave');
+    return;
+  }
+  run();
+}
+
+function handleConfirmLeave() {
+  const run = state.pendingAction;
+  closeModal();
+  if (run) run();
 }
 
 // ---------------- Fragmentos de UI reutilizáveis ----------------
@@ -426,6 +471,31 @@ function ingredientRows(editorKey, ingredients, invalidIds = new Set()) {
   <div class="ingredient-rows-actions">
     ${addRowLink('Adicionar ingrediente', 'add-ingredient', editorKey)}
   </div>`;
+}
+
+// Mesma linha de ingrediente, em formato de tabela (usado na edição de uma
+// receita já salva, onde a lista tende a ser revisada com mais calma).
+function ingredientsTable(editorKey, ingredients, invalidIds = new Set()) {
+  return `
+  <table class="data-table data-table-editable">
+    <thead><tr><th>Ingrediente</th><th>Preço da compra</th><th>Qtd. comprada</th><th>Qtd. usada</th><th>Un.</th><th></th></tr></thead>
+    <tbody>
+      ${ingredients.map((ingredient) => {
+        const max = maxUsedAmount(ingredient);
+        const usedInvalid = invalidIds.has(ingredient.id);
+        return `
+        <tr data-ingredient="${ingredient.id}">
+          <td>${ingredientNameCell(editorKey, ingredient)}</td>
+          <td><input aria-label="Preço da compra" inputmode="decimal" placeholder="R$ 0,00" data-editor="${editorKey}" data-ingredient="${ingredient.id}" data-ingredient-field="packagePrice" value="${escapeHtml(ingredient.packagePrice)}" /></td>
+          <td><input aria-label="Quantidade comprada" inputmode="decimal" data-editor="${editorKey}" data-ingredient="${ingredient.id}" data-ingredient-field="packageAmount" value="${escapeHtml(ingredient.packageAmount)}" /></td>
+          <td><input aria-label="Quantidade usada" inputmode="decimal" required class="${usedInvalid ? 'is-invalid' : ''}" placeholder="${max ? `Máx. ${max}` : 'Obrigatório'}" data-editor="${editorKey}" data-ingredient="${ingredient.id}" data-ingredient-field="usedAmount" value="${escapeHtml(ingredient.usedAmount)}" /></td>
+          <td><input aria-label="Unidade" data-editor="${editorKey}" data-ingredient="${ingredient.id}" data-ingredient-field="unit" value="${escapeHtml(ingredient.unit)}" /></td>
+          <td class="data-table-actions"><button class="ghost" type="button" data-action="remove-ingredient" data-editor="${editorKey}" data-id="${ingredient.id}">Remover</button></td>
+        </tr>`;
+      }).join('')}
+    </tbody>
+  </table>
+  ${addRowLink('Adicionar ingrediente', 'add-ingredient', editorKey)}`;
 }
 
 function validateIngredientAmounts(ingredients) {
@@ -603,6 +673,66 @@ function addExpenseModal(data) {
     </div>`;
 }
 
+function addIngredientModal(data) {
+  return `
+    <div class="modal-box">
+      <div class="modal-header"><h3>Adicionar ingrediente</h3><button type="button" class="icon-btn ghost" data-action="close-modal">${icon('close')}</button></div>
+      ${data.error ? `<p class="auth-error">${escapeHtml(data.error)}</p>` : ''}
+      <form data-form="new-ingredient" class="modal-form">
+        <label>Nome<input name="name" required /></label>
+        <div class="field-grid">
+          <label>Preço da compra<input name="packagePrice" inputmode="decimal" placeholder="R$ 0,00" required /></label>
+          <label>Qtd. comprada<input name="packageAmount" inputmode="decimal" placeholder="Kg/Gramas" required /></label>
+        </div>
+        <div class="field-grid">
+          <label>Unidade<input name="unit" value="g" required /></label>
+          <label>Categoria<input name="category" /></label>
+        </div>
+        <label>Marca<input name="brand" /></label>
+        <div class="save-actions">
+          <button type="submit" ${data.loading ? 'disabled' : ''}>${data.loading ? 'Adicionando...' : 'Adicionar'}</button>
+          <button type="button" class="ghost" data-action="close-modal">Cancelar</button>
+        </div>
+      </form>
+    </div>`;
+}
+
+function addSupplierModal(data) {
+  return `
+    <div class="modal-box">
+      <div class="modal-header"><h3>Adicionar fornecedor</h3><button type="button" class="icon-btn ghost" data-action="close-modal">${icon('close')}</button></div>
+      ${data.error ? `<p class="auth-error">${escapeHtml(data.error)}</p>` : ''}
+      <form data-form="new-supplier" class="modal-form">
+        <label>Nome<input name="name" required /></label>
+        <div class="field-grid">
+          <label>Telefone<input name="phone" /></label>
+          <label>E-mail<input name="email" type="email" /></label>
+        </div>
+        <label>Endereço<input name="address" /></label>
+        <div class="field-grid">
+          <label>Site<input name="site" /></label>
+          <label>Contato<input name="contact_name" /></label>
+        </div>
+        <div class="save-actions">
+          <button type="submit" ${data.loading ? 'disabled' : ''}>${data.loading ? 'Adicionando...' : 'Adicionar'}</button>
+          <button type="button" class="ghost" data-action="close-modal">Cancelar</button>
+        </div>
+      </form>
+    </div>`;
+}
+
+function confirmLeaveModal() {
+  return `
+    <div class="modal-box">
+      <div class="modal-header"><h3>Sair sem salvar?</h3><button type="button" class="icon-btn ghost" data-action="close-modal">${icon('close')}</button></div>
+      <p>Você tem alterações não salvas nesta página. Se sair agora, elas serão perdidas.</p>
+      <div class="save-actions">
+        <button type="button" class="danger" data-action="confirm-leave">Sair sem salvar</button>
+        <button type="button" class="ghost" data-action="close-modal">Continuar editando</button>
+      </div>
+    </div>`;
+}
+
 function confirmDeleteModal(data) {
   return `
     <div class="modal-box">
@@ -634,6 +764,9 @@ function modalOverlay() {
     'delete-account': deleteAccountModal,
     'add-expense': addExpenseModal,
     'confirm-delete': confirmDeleteModal,
+    'add-ingredient': addIngredientModal,
+    'add-supplier': addSupplierModal,
+    'confirm-leave': confirmLeaveModal,
   }[data.type];
   if (!content) return '';
   return `<div class="modal-overlay">${content(data)}</div>`;
@@ -690,10 +823,15 @@ function renderProdutosPage() {
 function renderProdutoDetalhe(id) {
   if (state.detail.loading || state.detail.productId !== id) return loadingMsg();
   const editor = state.detail;
+  const isDirty = detailSnapshotOf(editor) !== state.detailSnapshot;
   return `
     <div class="section-header">
       <div><p class="eyebrow">Receita</p><h2>${escapeHtml(editor.productName || 'Receita')}</h2></div>
-      <button type="button" class="ghost" data-action="goto" data-route="produtos">Voltar para receitas</button>
+      <div class="section-header-actions">
+        <button type="button" class="ghost" data-action="goto" data-route="produtos">Voltar</button>
+        <button type="button" class="danger" data-action="delete-detail" data-id="${id}" data-name="${escapeHtml(editor.productName)}">Excluir receita</button>
+        <button type="button" data-action="save-detail" ${isDirty ? '' : 'disabled'}>Salvar alterações</button>
+      </div>
     </div>
     ${statusBox()}
     <div class="panel">
@@ -704,18 +842,9 @@ function renderProdutoDetalhe(id) {
     <div class="panel">
       <h3>Ingredientes e embalagens usados</h3>
       ${editor.errors.ingredients ? `<p class="form-error">${escapeHtml(editor.errors.ingredients)}</p>` : ''}
-      ${ingredientRows('detail', editor.ingredients, editor.errors.invalidIngredientIds || new Set())}
+      ${ingredientsTable('detail', editor.ingredients, editor.errors.invalidIngredientIds || new Set())}
     </div>
-    <div class="content-grid">
-      <div class="panel cost-panel">
-        <h3>Ações</h3>
-        <div class="save-actions">
-          <button type="button" data-action="save-detail">Salvar alterações</button>
-          <button type="button" class="danger" data-action="delete-detail" data-id="${id}" data-name="${escapeHtml(editor.productName)}">Excluir receita</button>
-        </div>
-      </div>
-      ${pricingResultBlock(editor)}
-    </div>`;
+    ${pricingResultBlock(editor)}`;
 }
 
 function renderWizard() {
@@ -776,11 +905,17 @@ function renderWizardReview(editor) {
 }
 
 function renderIngredientesPage() {
-  const list = state.savedIngredients.length > 0
+  const query = state.ingredientSearch.trim().toLowerCase();
+  const filtered = query
+    ? state.savedIngredients.filter((i) => i.name.toLowerCase().includes(query)
+      || (i.category || '').toLowerCase().includes(query)
+      || (i.brand || '').toLowerCase().includes(query))
+    : state.savedIngredients;
+  const list = filtered.length > 0
     ? `<div class="table-scroll"><table class="data-table">
         <thead><tr><th>Nome</th><th>Categoria</th><th>Preço</th><th>Qtd.</th><th>Marca</th><th></th></tr></thead>
         <tbody>
-          ${state.savedIngredients.map((i) => `
+          ${filtered.map((i) => `
             <tr>
               <td>${escapeHtml(i.name)}</td>
               <td>${i.category ? escapeHtml(i.category) : '—'}</td>
@@ -794,22 +929,17 @@ function renderIngredientesPage() {
             </tr>`).join('')}
         </tbody>
       </table></div>`
-    : emptyState('Nenhum ingrediente cadastrado ainda.', false);
+    : emptyState(query ? 'Nenhum ingrediente encontrado.' : 'Nenhum ingrediente cadastrado ainda.', false);
 
   return `
-    <div class="section-header"><div><p class="eyebrow">Base de ingredientes</p><h2>Ingredientes e embalagens</h2></div></div>
+    <div class="section-header">
+      <div><p class="eyebrow">Base de ingredientes</p><h2>Ingredientes e embalagens</h2></div>
+      <button type="button" data-action="add-ingredient-modal">Adicionar novo</button>
+    </div>
     ${statusBox()}
     <div class="panel">
+      <input class="search-input" type="search" name="ingredientSearch" data-search="ingredients" placeholder="Buscar por nome, categoria ou marca..." value="${escapeHtml(state.ingredientSearch)}" />
       ${state.dataLoading ? loadingMsg() : list}
-      <form data-form="new-ingredient" class="new-ingredient-form" style="grid-template-columns: 1.6fr 1fr 1fr 0.8fr 1fr 1fr auto;">
-        <input name="name" placeholder="Nome" required />
-        <input name="packagePrice" inputmode="decimal" placeholder="R$ 0,00" required />
-        <input name="packageAmount" inputmode="decimal" placeholder="Kg/Gramas" required />
-        <input name="unit" placeholder="Un. (g, ml, un)" value="g" required />
-        <input name="category" placeholder="Categoria" />
-        <input name="brand" placeholder="Marca" />
-        <button type="submit">Adicionar</button>
-      </form>
     </div>`;
 }
 
@@ -862,11 +992,17 @@ function renderLucroPage() {
 }
 
 function renderFornecedoresPage() {
-  const list = state.suppliers.length > 0
+  const query = state.supplierSearch.trim().toLowerCase();
+  const filtered = query
+    ? state.suppliers.filter((s) => s.name.toLowerCase().includes(query)
+      || (s.contact_name || '').toLowerCase().includes(query)
+      || (s.email || '').toLowerCase().includes(query))
+    : state.suppliers;
+  const list = filtered.length > 0
     ? `<div class="table-scroll"><table class="data-table">
         <thead><tr><th>Nome</th><th>Telefone</th><th>Contato</th><th>E-mail</th><th></th></tr></thead>
         <tbody>
-          ${state.suppliers.map((s) => `
+          ${filtered.map((s) => `
             <tr>
               <td>${escapeHtml(s.name)}</td>
               <td>${s.phone ? escapeHtml(s.phone) : '—'}</td>
@@ -876,22 +1012,17 @@ function renderFornecedoresPage() {
             </tr>`).join('')}
         </tbody>
       </table></div>`
-    : emptyState('Nenhum fornecedor cadastrado ainda.', false);
+    : emptyState(query ? 'Nenhum fornecedor encontrado.' : 'Nenhum fornecedor cadastrado ainda.', false);
 
   return `
-    <div class="section-header"><div><p class="eyebrow">Base de fornecedores</p><h2>Contatos</h2></div></div>
+    <div class="section-header">
+      <div><p class="eyebrow">Base de fornecedores</p><h2>Contatos</h2></div>
+      <button type="button" data-action="add-supplier-modal">Adicionar novo</button>
+    </div>
     ${statusBox()}
     <div class="panel">
+      <input class="search-input" type="search" name="supplierSearch" data-search="suppliers" placeholder="Buscar por nome, contato ou e-mail..." value="${escapeHtml(state.supplierSearch)}" />
       ${state.dataLoading ? loadingMsg() : list}
-      <form data-form="new-supplier" class="new-ingredient-form" style="grid-template-columns: 1.4fr 1fr 1fr 1fr 1fr 1fr auto;">
-        <input name="name" placeholder="Nome" required />
-        <input name="phone" placeholder="Telefone" />
-        <input name="address" placeholder="Endereço" />
-        <input name="site" placeholder="Site" />
-        <input name="contact_name" placeholder="Contato" />
-        <input name="email" type="email" placeholder="E-mail" />
-        <button type="submit">Adicionar</button>
-      </form>
     </div>`;
 }
 
@@ -1147,6 +1278,8 @@ async function handleSaveDetail() {
       },
       ed.ingredients.filter((i) => i.name.trim()),
     );
+    ed.photoFile = null;
+    state.detailSnapshot = detailSnapshotOf(ed);
     showSuccess('Alterações salvas.');
     await loadUserData();
   } catch (error) {
@@ -1178,12 +1311,17 @@ async function handleNewSavedIngredient(form) {
     category: formData.get('category') || '',
     brand: formData.get('brand') || '',
   };
+  state.activeModal.loading = true;
+  state.activeModal.error = '';
+  render();
   try {
     await db.createIngredient(state.session.user.id, draft);
     await loadUserData();
+    closeModal();
     showSuccess('Ingrediente cadastrado!');
   } catch (error) {
-    state.statusMessage = `Erro ao cadastrar ingrediente: ${error.message}`;
+    state.activeModal.loading = false;
+    state.activeModal.error = error.message;
     render();
   }
 }
@@ -1269,12 +1407,17 @@ async function handleNewSupplier(form) {
     contact_name: formData.get('contact_name') || '',
     email: formData.get('email') || '',
   };
+  state.activeModal.loading = true;
+  state.activeModal.error = '';
+  render();
   try {
     await db.createSupplier(state.session.user.id, draft);
     await loadUserData();
+    closeModal();
     showSuccess('Fornecedor cadastrado!');
   } catch (error) {
-    state.statusMessage = `Erro ao cadastrar fornecedor: ${error.message}`;
+    state.activeModal.loading = false;
+    state.activeModal.error = error.message;
     render();
   }
 }
@@ -1493,6 +1636,16 @@ app.addEventListener('input', (event) => {
   if (target.dataset.tierField) {
     state.profitTiers = state.profitTiers.map((t) => (t.id === target.dataset.tierId ? { ...t, [target.dataset.tierField]: target.value } : t));
     render();
+    return;
+  }
+  if (target.dataset.search === 'ingredients') {
+    state.ingredientSearch = target.value;
+    render();
+    return;
+  }
+  if (target.dataset.search === 'suppliers') {
+    state.supplierSearch = target.value;
+    render();
   }
 });
 
@@ -1511,14 +1664,8 @@ app.addEventListener('submit', (event) => {
   event.preventDefault();
   const formType = event.target.dataset.form;
   if (formType === 'auth') handleAuthSubmit(event.target);
-  if (formType === 'new-ingredient') {
-    handleNewSavedIngredient(event.target);
-    event.target.reset();
-  }
-  if (formType === 'new-supplier') {
-    handleNewSupplier(event.target);
-    event.target.reset();
-  }
+  if (formType === 'new-ingredient') handleNewSavedIngredient(event.target);
+  if (formType === 'new-supplier') handleNewSupplier(event.target);
   if (formType === 'edit-ingredient') handleEditIngredientSubmit(event.target);
   if (formType === 'edit-profile') handleEditProfileSubmit(event.target);
   if (formType === 'change-password') handleChangePasswordSubmit(event.target);
@@ -1535,10 +1682,10 @@ app.addEventListener('click', (event) => {
 
   switch (action) {
     case 'goto':
-      navigate(`#/${el.dataset.route}`);
+      requestNavigation(() => navigate(`#/${el.dataset.route}`));
       break;
     case 'open-produto':
-      navigate(`#/produto/${id}`);
+      requestNavigation(() => navigate(`#/produto/${id}`));
       break;
     case 'start-wizard':
       startWizard();
@@ -1546,7 +1693,10 @@ app.addEventListener('click', (event) => {
       render();
       break;
     case 'logout':
-      signOut();
+      requestNavigation(() => signOut());
+      break;
+    case 'confirm-leave':
+      handleConfirmLeave();
       break;
     case 'auth-tab':
       state.authMode = el.dataset.mode;
@@ -1590,6 +1740,12 @@ app.addEventListener('click', (event) => {
       break;
     case 'add-expense':
       openModal('add-expense');
+      break;
+    case 'add-ingredient-modal':
+      openModal('add-ingredient');
+      break;
+    case 'add-supplier-modal':
+      openModal('add-supplier');
       break;
     case 'delete-expense':
       handleDeleteExpense(id);
@@ -1666,6 +1822,13 @@ app.addEventListener('click', (event) => {
   if (event.target.classList.contains('modal-overlay')) {
     closeModal();
   }
+});
+
+// Avisa também ao fechar a aba ou recarregar a página com alterações não salvas.
+window.addEventListener('beforeunload', (event) => {
+  if (!hasUnsavedChanges()) return;
+  event.preventDefault();
+  event.returnValue = '';
 });
 
 render();

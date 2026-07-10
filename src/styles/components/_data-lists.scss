@@ -139,6 +139,11 @@
   overflow-x: auto;
 }
 
+.search-input {
+  max-width: 340px;
+  margin-bottom: 18px;
+}
+
 .data-table {
   width: 100%;
   border-collapse: collapse;
@@ -165,6 +170,22 @@
   }
 }
 
+// Variante editável: cada célula carrega um input/combobox em vez de texto.
+.data-table-editable {
+  td {
+    white-space: normal;
+  }
+
+  input {
+    width: 100%;
+    min-width: 84px;
+  }
+
+  .combobox input {
+    min-width: 160px;
+  }
+}
+
 .data-table-actions {
   display: flex;
   gap: 6px;
@@ -173,16 +194,5 @@
   button {
     padding: 0.45rem 0.8rem;
     font-size: 0.82rem;
-  }
-}
-
-.new-ingredient-form {
-  display: grid;
-  grid-template-columns: 2fr 1fr 1fr 1fr auto;
-  gap: 10px;
-  margin-top: 16px;
-
-  @include respond-down($bp-tablet) {
-    grid-template-columns: 1fr 1fr;
   }
 }

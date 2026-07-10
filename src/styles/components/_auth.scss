@@ -81,6 +81,7 @@
   bottom: 28px;
   z-index: 1;
   margin: 0;
+  text-align: center;
 
   @include respond-down($bp-tablet) {
     display: none;
@@ -92,7 +93,8 @@
     font-size: 1.15rem;
     font-weight: $fw-bold;
     line-height: 1.4;
-    margin: 0;
+    margin: 0 auto;
+    max-width: 34ch;
   }
 }
 
@@ -101,12 +103,15 @@
 .auth-subtitle { margin: 0 0 26px; }
 
 .auth-submit {
+  position: relative;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;
   width: 100%;
 
   .icon {
+    position: absolute;
+    right: 1.2rem;
     width: 18px;
     height: 18px;
   }
