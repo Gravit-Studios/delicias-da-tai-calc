@@ -2,7 +2,6 @@ import { calculatePricing, formatCurrency } from './pricing.js';
 import { signUp, signIn, signOut, getSession, onAuthStateChange, changePassword, updateEmail } from './auth.js';
 import { parseRoute, navigate, onRouteChange } from './router.js';
 import { headerArt } from './headerArt.js';
-import { authArt } from './authArt.js';
 import * as db from './db.js';
 
 // ---------------- Helpers de estado / formatação ----------------
@@ -857,7 +856,7 @@ function authHtml() {
     <div class="auth-page">
       <div class="auth-shell">
         <div class="auth-visual">
-          ${authArt}
+          <img src="/assets/bg-login.webp" alt="" class="auth-visual-photo" />
           <div class="auth-visual-overlay"></div>
           <div class="auth-brand"><span class="brand-mark"></span> Delícias da Tai</div>
           <blockquote class="auth-quote">

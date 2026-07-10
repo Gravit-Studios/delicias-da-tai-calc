@@ -10,4 +10,5 @@ await cp('src', 'dist/src', {
   // não precisam ir para o build final.
   filter: (source) => !source.split(sep).includes('styles'),
 });
+await cp('assets', 'dist/assets', { recursive: true });
 console.log('Build estático gerado em dist/');
