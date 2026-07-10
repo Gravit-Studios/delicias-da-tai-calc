@@ -363,17 +363,6 @@ function pageHeaderWithSave(eyebrow, title, saveAction, isDirty) {
   </div>`;
 }
 
-// Agrupa uma lista por categoria (usado na tabela de ingredientes).
-function groupByCategory(items) {
-  const groups = new Map();
-  for (const item of items) {
-    const key = item.category?.trim() || 'Sem categoria';
-    if (!groups.has(key)) groups.set(key, []);
-    groups.get(key).push(item);
-  }
-  return groups;
-}
-
 // Padrão de campo do projeto: label acima do input, erro (se houver) abaixo.
 function fieldFor(editorKey, key, label, value, mode = 'text', error = '') {
   return `<label>${label}<input class="${error ? 'is-invalid' : ''}" data-editor="${editorKey}" data-field="${key}" inputmode="${mode}" value="${escapeHtml(value)}" />${error ? `<p class="form-error">${escapeHtml(error)}</p>` : ''}</label>`;
@@ -406,7 +395,7 @@ function ingredientNameCell(editorKey, ingredient) {
     : state.savedIngredients;
   return `
     <div class="combobox">
-      <input aria-label="Ingrediente" autocomplete="off" placeholder="Buscar na base..." data-editor="${editorKey}" data-ingredient-field="name" value="${escapeHtml(ingredient.name)}" />
+      <input aria-label="Ingrediente" autocomplete="off" placeholder="Buscar na base..." data-editor="${editorKey}" data-ingredient="${rowId}" data-ingredient-field="name" value="${escapeHtml(ingredient.name)}" />
       ${isOpen && options.length ? `
         <div class="combobox-list">
           ${options.map((si) => `<button type="button" class="combobox-option" data-action="select-ingredient-option" data-editor="${editorKey}" data-row-id="${rowId}" data-ingredient-id="${si.id}">${escapeHtml(si.name)}</button>`).join('')}
@@ -423,10 +412,10 @@ function ingredientRows(editorKey, ingredients, invalidIds = new Set()) {
     return `
     <div class="ingredient-grid" data-ingredient="${ingredient.id}">
       ${ingredientNameCell(editorKey, ingredient)}
-      <input aria-label="Preço da compra" inputmode="decimal" data-editor="${editorKey}" data-ingredient-field="packagePrice" value="${escapeHtml(ingredient.packagePrice)}" />
-      <input aria-label="Quantidade comprada" inputmode="decimal" data-editor="${editorKey}" data-ingredient-field="packageAmount" value="${escapeHtml(ingredient.packageAmount)}" />
-      <input aria-label="Quantidade usada" inputmode="decimal" required class="${usedInvalid ? 'is-invalid' : ''}" placeholder="${max ? `Máx. ${max}` : 'Obrigatório'}" data-editor="${editorKey}" data-ingredient-field="usedAmount" value="${escapeHtml(ingredient.usedAmount)}" />
-      <input aria-label="Unidade" data-editor="${editorKey}" data-ingredient-field="unit" value="${escapeHtml(ingredient.unit)}" />
+      <input aria-label="Preço da compra" inputmode="decimal" data-editor="${editorKey}" data-ingredient="${ingredient.id}" data-ingredient-field="packagePrice" value="${escapeHtml(ingredient.packagePrice)}" />
+      <input aria-label="Quantidade comprada" inputmode="decimal" data-editor="${editorKey}" data-ingredient="${ingredient.id}" data-ingredient-field="packageAmount" value="${escapeHtml(ingredient.packageAmount)}" />
+      <input aria-label="Quantidade usada" inputmode="decimal" required class="${usedInvalid ? 'is-invalid' : ''}" placeholder="${max ? `Máx. ${max}` : 'Obrigatório'}" data-editor="${editorKey}" data-ingredient="${ingredient.id}" data-ingredient-field="usedAmount" value="${escapeHtml(ingredient.usedAmount)}" />
+      <input aria-label="Unidade" data-editor="${editorKey}" data-ingredient="${ingredient.id}" data-ingredient-field="unit" value="${escapeHtml(ingredient.unit)}" />
       <button class="ghost" type="button" data-action="remove-ingredient" data-editor="${editorKey}" data-id="${ingredient.id}">Remover</button>
     </div>`;
   }).join('')}
@@ -723,25 +712,22 @@ function renderWizardReview(editor) {
 }
 
 function renderIngredientesPage() {
-  const groups = groupByCategory(state.savedIngredients);
   const list = state.savedIngredients.length > 0
     ? `<div class="table-scroll"><table class="data-table">
-        <thead><tr><th>Nome</th><th>Preço</th><th>Qtd.</th><th>Marca</th><th></th></tr></thead>
+        <thead><tr><th>Nome</th><th>Categoria</th><th>Preço</th><th>Qtd.</th><th>Marca</th><th></th></tr></thead>
         <tbody>
-          ${[...groups.entries()].map(([category, items]) => `
-            <tr class="data-table-group"><td colspan="5">${escapeHtml(category)}</td></tr>
-            ${items.map((i) => `
-              <tr>
-                <td>${escapeHtml(i.name)}</td>
-                <td>${formatCurrency(i.package_price)}</td>
-                <td>${escapeHtml(String(i.package_amount))}${escapeHtml(i.unit)}</td>
-                <td>${i.brand ? escapeHtml(i.brand) : '—'}</td>
-                <td class="data-table-actions">
-                  <button type="button" class="ghost" data-action="open-edit-ingredient" data-id="${i.id}">Editar</button>
-                  <button type="button" class="ghost" data-action="delete-saved-ingredient" data-id="${i.id}">Excluir</button>
-                </td>
-              </tr>`).join('')}
-          `).join('')}
+          ${state.savedIngredients.map((i) => `
+            <tr>
+              <td>${escapeHtml(i.name)}</td>
+              <td>${i.category ? escapeHtml(i.category) : '—'}</td>
+              <td>${formatCurrency(i.package_price)}</td>
+              <td>${escapeHtml(String(i.package_amount))}${escapeHtml(i.unit)}</td>
+              <td>${i.brand ? escapeHtml(i.brand) : '—'}</td>
+              <td class="data-table-actions">
+                <button type="button" class="ghost" data-action="open-edit-ingredient" data-id="${i.id}">Editar</button>
+                <button type="button" class="ghost" data-action="delete-saved-ingredient" data-id="${i.id}">Excluir</button>
+              </td>
+            </tr>`).join('')}
         </tbody>
       </table></div>`
     : emptyState('Nenhum ingrediente cadastrado ainda.', false);
@@ -1071,7 +1057,7 @@ async function handleWizardSave() {
         name: ed.productName || 'Receita sem nome',
         yield_amount: Math.max(1, Math.floor(toNumberSafe(ed.yieldAmount) || 1)),
       },
-      ed.ingredients,
+      ed.ingredients.filter((i) => i.name.trim()),
     );
     await loadUserData();
     showSuccess('Receita criada com sucesso!');
@@ -1103,7 +1089,7 @@ async function handleSaveDetail() {
         name: ed.productName || 'Receita sem nome',
         yield_amount: Math.max(1, Math.floor(toNumberSafe(ed.yieldAmount) || 1)),
       },
-      ed.ingredients,
+      ed.ingredients.filter((i) => i.name.trim()),
     );
     showSuccess('Alterações salvas.');
     await loadUserData();
