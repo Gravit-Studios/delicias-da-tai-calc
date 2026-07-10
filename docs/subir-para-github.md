@@ -82,7 +82,7 @@ Após o push, o GitHub deve mostrar os arquivos do projeto, como:
 - `index.html`
 - `src/main.js`
 - `src/pricing.js`
-- `src/styles.css`
+- `src/styles/` (fontes Sass do design system)
 - `package.json`
 
 A Vercel deve iniciar um novo deploy automaticamente quando detectar o commit no branch `main`.

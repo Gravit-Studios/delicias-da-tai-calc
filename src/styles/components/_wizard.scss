@@ -1,0 +1,45 @@
+@use '../abstracts' as *;
+
+.wizard-steps {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 24px;
+}
+
+.wizard-step {
+  flex: 1;
+  text-align: center;
+  padding: 10px 6px;
+  border-radius: $radius-sm;
+  background: $surface-tint;
+  color: $primary-500;
+  font-weight: $fw-bold;
+  font-size: $fs-xs;
+
+  &.active {
+    background: $primary-500;
+    color: #fff;
+  }
+}
+
+.wizard-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 24px;
+}
+
+.wizard-review {
+  dl {
+    display: grid;
+    gap: 10px;
+    margin: 0;
+  }
+
+  div {
+    display: flex;
+    justify-content: space-between;
+    border-bottom: 1px solid $secondary-200;
+    padding-bottom: 8px;
+  }
+}

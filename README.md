@@ -22,6 +22,31 @@ npm run start
 npm test
 npm run build
 ```
+
+## Sistema de estilos (Sass)
+
+Os estilos ficam em `src/styles/` (Sass, com `@use`/`@forward`) e são
+compilados para `src/styles.css` — esse arquivo gerado não fica no
+controle de versão, então **não edite `src/styles.css` diretamente**.
+
+```
+src/styles/
+  abstracts/   → cores (escala 100–900), tipografia, tokens e mixins
+  base/        → reset, tipografia base, botões e padrão de formulários
+  components/  → navbar, banner, cards, listas, wizard, etc.
+  main.scss    → ponto de entrada que importa tudo na ordem certa
+```
+
+- `npm run build:css` — compila uma vez (roda sozinho antes de `start` e `build`)
+- `npm run watch:css` — recompila automaticamente a cada alteração, útil durante o desenvolvimento
+
+Paleta: cor **primária** (vermelho-terracota), **secundária** (caramelo)
+e **terciária** (dourado), cada uma com escala de 100 (mais clara) a 900
+(mais escura) e o tom 500 como principal — ver
+`src/styles/abstracts/_colors.scss`. Tipografia: `Fraunces` para títulos
+e `Inter` para texto/formulários (carregadas via Google Fonts no
+`index.html`).
+
 ## Publicação no GitHub
 
 O passo a passo para autorizar pelo terminal e publicar no GitHub está em [`docs/subir-para-github.md`](docs/subir-para-github.md).

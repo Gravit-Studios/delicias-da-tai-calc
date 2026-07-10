@@ -3,3 +3,6 @@ dist/
 .env
 .env.local
 .vercel
+
+# CSS compilado a partir de src/styles/*.scss (ver `npm run build:css`)
+src/styles.css

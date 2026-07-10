@@ -1,0 +1,72 @@
+@use '../abstracts' as *;
+
+.highlight-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.highlight-card {
+  @include card-surface;
+  padding: 22px;
+  display: grid;
+  gap: 8px;
+  align-content: start;
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+
+  &:hover {
+    box-shadow: $shadow-md;
+    transform: translateY(-2px);
+  }
+
+  strong {
+    font-size: 1.6rem;
+    color: $ink-900;
+  }
+
+  .highlight-name { font-size: 1.2rem; }
+
+  button {
+    justify-self: start;
+    margin-top: 6px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+}
+
+.highlight-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: $radius-sm;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 6px;
+
+  .icon {
+    width: 22px;
+    height: 22px;
+  }
+}
+
+.highlight-icon-box { background: $tertiary-100; color: $secondary-500; }
+
+.highlight-icon-star { background: $primary-100; color: $primary-500; }
+
+.highlight-icon-cta { background: rgba(#fff, 0.18); color: #fff; }
+
+.highlight-card-cta {
+  background: linear-gradient(135deg, $primary-500, $secondary-500);
+  border: 0;
+
+  .eyebrow { color: $tertiary-300; }
+
+  strong { color: #fff; }
+
+  button {
+    background: #fff;
+    color: $primary-500;
+  }
+}

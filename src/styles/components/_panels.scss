@@ -1,0 +1,33 @@
+@use '../abstracts' as *;
+
+.panel {
+  border: 1px solid rgba($primary-500, 0.12);
+  border-radius: $radius-lg;
+  background: rgba(#fff, 0.9);
+  box-shadow: $shadow-md;
+  padding: 24px;
+  margin-bottom: 20px;
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.status-message {
+  margin: 0 0 20px;
+  padding: 14px 18px;
+  border-radius: $radius-sm;
+  background: $surface-tint;
+  color: $primary-500;
+  font-weight: $fw-bold;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 40px 20px;
+  color: $ink-400;
+}

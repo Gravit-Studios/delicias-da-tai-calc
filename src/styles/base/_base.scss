@@ -1,0 +1,52 @@
+@use '../abstracts' as *;
+
+html {
+  color: $ink-900;
+  font-family: $font-body;
+}
+
+body {
+  min-width: 320px;
+  background:
+    radial-gradient(1200px 500px at 15% -10%, rgba($tertiary-500, 0.16), transparent),
+    radial-gradient(900px 500px at 100% 0%, rgba($secondary-500, 0.12), transparent),
+    $bg;
+}
+
+h1,
+h2,
+h3 {
+  margin: 0;
+  line-height: $lh-tight;
+  font-family: $font-heading;
+  font-weight: $fw-bold;
+}
+
+h1 { font-size: $fs-h1; }
+h2 { font-size: $fs-h2; }
+h3 { font-size: $fs-h3; }
+
+p {
+  color: $ink-700;
+  line-height: $lh-body;
+}
+
+.icon {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+.eyebrow {
+  margin: 0 0 0.35rem;
+  color: $secondary-600;
+  font-size: $fs-xs;
+  font-weight: $fw-black;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.muted {
+  color: $ink-400;
+  font-weight: $fw-medium;
+}

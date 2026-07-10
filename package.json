@@ -4,10 +4,15 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "prestart": "npm run build:css",
     "start": "node server.js",
+    "build:css": "sass src/styles/main.scss src/styles.css --no-source-map",
+    "watch:css": "sass --watch src/styles/main.scss:src/styles.css --no-source-map",
+    "prebuild": "npm run build:css -- --style=compressed",
     "build": "node scripts/build.js",
     "test": "node --test"
   },
-  "dependencies": {},
-  "devDependencies": {}
+  "devDependencies": {
+    "sass": "^1.101.0"
+  }
 }

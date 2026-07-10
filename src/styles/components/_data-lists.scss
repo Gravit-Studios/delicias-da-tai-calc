@@ -1,0 +1,68 @@
+@use '../abstracts' as *;
+
+// -------- Grade de ingredientes (usada no detalhe do produto e no wizard) --------
+
+.ingredient-grid {
+  display: grid;
+  grid-template-columns: minmax(160px, 1.6fr) repeat(3, minmax(100px, 1fr)) 70px 100px;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 10px;
+
+  @include respond-down($bp-tablet) {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.header-row {
+  color: $secondary-700;
+  font-size: $fs-xs;
+  font-weight: $fw-black;
+  padding: 0 8px;
+
+  @include respond-down($bp-tablet) {
+    display: none;
+  }
+}
+
+// -------- Listas salvas (ingredientes, fornecedores) --------
+
+.saved-list {
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+
+  li {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    border-radius: $radius-sm;
+    background: $surface;
+    border: 1px solid $secondary-200;
+  }
+}
+
+.saved-list-actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+
+  button {
+    padding: 0.5rem 0.8rem;
+    font-size: 0.85rem;
+  }
+}
+
+.new-ingredient-form {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr auto;
+  gap: 10px;
+  margin-top: 16px;
+
+  @include respond-down($bp-tablet) {
+    grid-template-columns: 1fr 1fr;
+  }
+}

@@ -1,0 +1,21 @@
+// Tokens estruturais: raios, sombras, espaçamento e breakpoints.
+
+$radius-sm: 12px;
+$radius-md: 18px;
+$radius-lg: 24px;
+$radius-xl: 28px;
+$radius-pill: 999px;
+
+$shadow-sm: 0 6px 16px rgba(108, 55, 35, 0.06);
+$shadow-md: 0 14px 40px rgba(108, 55, 35, 0.08);
+$shadow-lift: 0 16px 32px rgba(143, 63, 55, 0.14);
+
+$space-1: 4px;
+$space-2: 8px;
+$space-3: 12px;
+$space-4: 16px;
+$space-5: 20px;
+$space-6: 24px;
+$space-8: 32px;
+
+$bp-tablet: 900px;

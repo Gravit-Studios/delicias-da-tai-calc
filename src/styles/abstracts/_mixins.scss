@@ -1,0 +1,24 @@
+@use 'colors' as c;
+@use 'tokens' as t;
+
+@mixin respond-down($breakpoint) {
+  @media (max-width: $breakpoint) {
+    @content;
+  }
+}
+
+@mixin button-variant($bg, $fg: #fff) {
+  background: $bg;
+  color: $fg;
+}
+
+@mixin focus-ring($color: c.$secondary-500) {
+  border-color: $color;
+  box-shadow: 0 0 0 4px rgba($color, 0.16);
+}
+
+@mixin card-surface($radius: t.$radius-md) {
+  background: c.$surface;
+  border-radius: $radius;
+  border: 1px solid c.$border;
+}

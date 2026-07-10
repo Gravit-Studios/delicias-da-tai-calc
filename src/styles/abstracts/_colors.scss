@@ -1,0 +1,50 @@
+// Escala de cores 100–900 (500 = tom principal) para cada papel da marca.
+// Gerada a partir das cores originais do projeto, misturando com branco
+// (tons < 500) e preto (tons > 500) para manter a mesma identidade visual.
+
+// Primária — vermelho-terracota (CTAs, marca, navegação ativa)
+$primary-100: #f4eceb;
+$primary-200: #e4d1cf;
+$primary-300: #d2b2af;
+$primary-400: #b5807b;
+$primary-500: #8f3f37;
+$primary-600: #78352e;
+$primary-700: #612b25;
+$primary-800: #4a211d;
+$primary-900: #361815;
+
+// Secundária — caramelo/rust (ações secundárias, links, bordas de destaque)
+$secondary-100: #faf2ef;
+$secondary-200: #f2dfd8;
+$secondary-300: #e9c9bd;
+$secondary-400: #dba793;
+$secondary-500: #c8795b;
+$secondary-600: #a8664c;
+$secondary-700: #88523e;
+$secondary-800: #683f2f;
+$secondary-900: #4c2e23;
+
+// Terciária — dourado/pêssego (badges, acentos, ilustrações)
+$tertiary-100: #fef6f0;
+$tertiary-200: #fceada;
+$tertiary-300: #fadcc1;
+$tertiary-400: #f6c599;
+$tertiary-500: #f2a765;
+$tertiary-600: #cb8c55;
+$tertiary-700: #a57245;
+$tertiary-800: #7e5735;
+$tertiary-900: #5c3f26;
+
+// Neutros (texto, superfícies, fundo) — tons quentes combinando com a marca
+$ink-900: #3d241f; // texto principal
+$ink-700: #6f4a42; // texto secundário / labels
+$ink-400: #a2837a; // texto auxiliar / placeholders
+$surface: #fff;
+$surface-tint: #fff0e8;
+$bg: #fff8f3;
+$border: rgba($primary-500, 0.1);
+
+// Feedback
+$danger-100: #fbe3df;
+$danger-500: #b23b2f;
+$success-500: #4b8f5a;

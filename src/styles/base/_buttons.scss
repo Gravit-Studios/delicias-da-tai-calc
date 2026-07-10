@@ -1,0 +1,48 @@
+@use '../abstracts' as *;
+
+button {
+  font: inherit;
+  border: 0;
+  border-radius: $radius-pill;
+  background: $primary-500;
+  color: #fff;
+  cursor: pointer;
+  font-weight: $fw-bold;
+  padding: 0.85rem 1.2rem;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+
+  &:hover {
+    box-shadow: 0 10px 24px rgba($primary-500, 0.22);
+    transform: translateY(-1px);
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+  }
+
+  &.ghost {
+    background: $surface-tint;
+    color: $primary-500;
+    padding-inline: 1rem;
+  }
+
+  &.danger {
+    background: $danger-100;
+    color: $danger-500;
+    padding-inline: 1rem;
+  }
+}
+
+.icon-btn {
+  padding: 0.7rem;
+  display: inline-flex;
+
+  .icon {
+    width: 16px;
+    height: 16px;
+    margin: 0;
+  }
+}

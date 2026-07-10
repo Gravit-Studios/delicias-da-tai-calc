@@ -1,0 +1,82 @@
+@use '../abstracts' as *;
+
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 16px;
+}
+
+.item-card {
+  @include card-surface;
+  padding: 18px;
+  display: grid;
+  gap: 10px;
+  cursor: pointer;
+  text-align: left;
+  color: $ink-900;
+  transition: box-shadow 0.2s ease, transform 0.2s ease, border-color 0.2s ease;
+
+  &:hover {
+    border-color: $secondary-500;
+    box-shadow: $shadow-md;
+    transform: translateY(-2px);
+
+    .item-card-link .icon {
+      transform: translateX(3px);
+    }
+  }
+
+  strong { font-size: 1.05rem; }
+
+  .price {
+    color: $primary-500;
+    font-weight: $fw-black;
+    font-size: 1.15rem;
+  }
+}
+
+.item-card-top {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.item-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-weight: $fw-black;
+  font-size: 1rem;
+}
+
+.item-card-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: $secondary-500;
+  font-weight: $fw-black;
+  font-size: 0.85rem;
+  margin-top: 2px;
+
+  .icon {
+    width: 15px;
+    height: 15px;
+    transition: transform 0.2s ease;
+  }
+}
+
+.item-card-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+
+  button {
+    padding: 0.45rem 0.75rem;
+    font-size: 0.8rem;
+  }
+}

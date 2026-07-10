@@ -1,0 +1,19 @@
+// Ponto de entrada do sistema de estilos. Não editar o CSS gerado
+// (src/styles.css) diretamente — ele é compilado a partir daqui via
+// `npm run build:css`.
+
+@use 'base/reset';
+@use 'base/base';
+@use 'base/buttons';
+@use 'base/forms';
+
+@use 'components/layout';
+@use 'components/navbar';
+@use 'components/banner';
+@use 'components/auth';
+@use 'components/highlight-cards';
+@use 'components/product-cards';
+@use 'components/panels';
+@use 'components/data-lists';
+@use 'components/pricing-summary';
+@use 'components/wizard';
