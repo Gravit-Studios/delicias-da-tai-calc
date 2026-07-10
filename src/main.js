@@ -2074,6 +2074,7 @@ app.addEventListener('input', (event) => {
 app.addEventListener('focus', (event) => {
   const target = event.target;
   if (!target.dataset || target.dataset.ingredientField !== 'name') return;
+  if (!target.closest('.combobox')) return;
   const rowId = target.closest('[data-ingredient]')?.dataset.ingredient;
   if (rowId && state.openCombobox !== rowId) {
     state.openCombobox = rowId;
