@@ -185,16 +185,14 @@ async function ensureDetailLoaded(id) {
       productId: product.id,
       productName: product.name,
       yieldAmount: String(product.yield_amount),
-      ingredients: items.length > 0
-        ? items.map((item) => newIngredient({
-            ingredientId: item.ingredient_id,
-            name: item.name,
-            packagePrice: String(item.package_price),
-            packageAmount: String(item.package_amount),
-            usedAmount: String(item.used_amount),
-            unit: item.unit,
-          }))
-        : [newIngredient()],
+      ingredients: items.map((item) => newIngredient({
+        ingredientId: item.ingredient_id,
+        name: item.name,
+        packagePrice: String(item.package_price),
+        packageAmount: String(item.package_amount),
+        usedAmount: String(item.used_amount),
+        unit: item.unit,
+      })),
       photoUrl: product.photo_url || '',
       photoFile: null,
       photoPreviewUrl: '',
@@ -305,6 +303,12 @@ function openModal(type, data = {}) {
 }
 
 function closeModal() {
+  // Fechar o modal de "adicionar ingrediente à receita" sem confirmar descarta
+  // a linha rascunho que ainda não foi inserida na tabela.
+  if (state.activeModal?.type === 'add-recipe-ingredient') {
+    const rowId = state.activeModal.rowId;
+    state.detail.ingredients = state.detail.ingredients.filter((i) => !(i.id === rowId && i.draft));
+  }
   state.activeModal = null;
   state.pendingAction = null;
   render();
@@ -475,12 +479,19 @@ function ingredientRows(editorKey, ingredients, invalidIds = new Set()) {
 
 // Mesma linha de ingrediente, em formato de tabela (usado na edição de uma
 // receita já salva, onde a lista tende a ser revisada com mais calma).
+// Linhas rascunho (ainda sendo preenchidas no modal de adicionar) ficam de
+// fora até serem confirmadas.
 function ingredientsTable(editorKey, ingredients, invalidIds = new Set()) {
+  const visible = ingredients.filter((i) => !i.draft);
+  const addLink = addRowLink('Adicionar ingrediente', 'add-ingredient', editorKey);
+  if (visible.length === 0) {
+    return `${emptyState('Nenhum ingrediente adicionado ainda.', false)}${addLink}`;
+  }
   return `
   <table class="data-table data-table-editable">
     <thead><tr><th>Ingrediente</th><th>Preço da compra</th><th>Qtd. comprada</th><th>Qtd. usada</th><th>Un.</th><th></th></tr></thead>
     <tbody>
-      ${ingredients.map((ingredient) => {
+      ${visible.map((ingredient) => {
         const max = maxUsedAmount(ingredient);
         const usedInvalid = invalidIds.has(ingredient.id);
         return `
@@ -495,11 +506,11 @@ function ingredientsTable(editorKey, ingredients, invalidIds = new Set()) {
       }).join('')}
     </tbody>
   </table>
-  ${addRowLink('Adicionar ingrediente', 'add-ingredient', editorKey)}`;
+  ${addLink}`;
 }
 
 function validateIngredientAmounts(ingredients) {
-  const active = ingredients.filter((i) => i.name.trim());
+  const active = ingredients.filter((i) => i.name.trim() && !i.draft);
   if (active.length === 0) {
     return { message: 'Adicione pelo menos um ingrediente da base.', invalidIds: new Set() };
   }
@@ -733,6 +744,36 @@ function confirmLeaveModal() {
     </div>`;
 }
 
+// Modal de "adicionar ingrediente" na edição de uma receita: reaproveita a
+// mesma linha/combobox da tabela, só que a linha (rascunho) fica escondida da
+// tabela até o usuário clicar em "Inserir".
+function addRecipeIngredientModal(data) {
+  const draft = state.detail.ingredients.find((i) => i.id === data.rowId);
+  if (!draft) return '';
+  const max = maxUsedAmount(draft);
+  return `
+    <div class="modal-box">
+      <div class="modal-header"><h3>Adicionar ingrediente</h3><button type="button" class="icon-btn ghost" data-action="close-modal">${icon('close')}</button></div>
+      ${data.error ? `<p class="auth-error">${escapeHtml(data.error)}</p>` : ''}
+      <div class="modal-form">
+        <label>Ingrediente</label>
+        ${ingredientNameCell('detail', draft)}
+        <div class="field-grid">
+          <label>Preço da compra<input aria-label="Preço da compra" inputmode="decimal" placeholder="R$ 0,00" data-editor="detail" data-ingredient="${draft.id}" data-ingredient-field="packagePrice" value="${escapeHtml(draft.packagePrice)}" /></label>
+          <label>Qtd. comprada<input aria-label="Quantidade comprada" inputmode="decimal" data-editor="detail" data-ingredient="${draft.id}" data-ingredient-field="packageAmount" value="${escapeHtml(draft.packageAmount)}" /></label>
+        </div>
+        <div class="field-grid">
+          <label>Qtd. usada<input aria-label="Quantidade usada" inputmode="decimal" placeholder="${max ? `Máx. ${max}` : 'Obrigatório'}" data-editor="detail" data-ingredient="${draft.id}" data-ingredient-field="usedAmount" value="${escapeHtml(draft.usedAmount)}" /></label>
+          <label>Unidade<input aria-label="Unidade" data-editor="detail" data-ingredient="${draft.id}" data-ingredient-field="unit" value="${escapeHtml(draft.unit)}" /></label>
+        </div>
+        <div class="save-actions">
+          <button type="button" data-action="confirm-add-recipe-ingredient">Inserir</button>
+          <button type="button" class="ghost" data-action="close-modal">Cancelar</button>
+        </div>
+      </div>
+    </div>`;
+}
+
 function confirmDeleteModal(data) {
   return `
     <div class="modal-box">
@@ -767,6 +808,7 @@ function modalOverlay() {
     'add-ingredient': addIngredientModal,
     'add-supplier': addSupplierModal,
     'confirm-leave': confirmLeaveModal,
+    'add-recipe-ingredient': addRecipeIngredientModal,
   }[data.type];
   if (!content) return '';
   return `<div class="modal-overlay">${content(data)}</div>`;
@@ -1276,7 +1318,7 @@ async function handleSaveDetail() {
         yield_amount: Math.max(1, Math.floor(toNumberSafe(ed.yieldAmount) || 1)),
         photo_url: photoUrl,
       },
-      ed.ingredients.filter((i) => i.name.trim()),
+      ed.ingredients.filter((i) => i.name.trim() && !i.draft),
     );
     ed.photoFile = null;
     state.detailSnapshot = detailSnapshotOf(ed);
@@ -1545,6 +1587,30 @@ async function handleConfirmDelete() {
   if (modal.kind === 'product') await handleDeleteDetail(modal.id);
 }
 
+// Abre o modal de adicionar ingrediente na edição de uma receita: cria uma
+// linha rascunho (escondida da tabela) que só entra de fato ao confirmar.
+function openAddRecipeIngredientModal() {
+  const draft = newIngredient({ draft: true });
+  state.detail.ingredients.push(draft);
+  openModal('add-recipe-ingredient', { rowId: draft.id });
+}
+
+function handleConfirmAddRecipeIngredient() {
+  const rowId = state.activeModal?.rowId;
+  const draft = state.detail.ingredients.find((i) => i.id === rowId);
+  if (!draft) {
+    closeModal();
+    return;
+  }
+  if (!draft.name.trim() || toNumberSafe(draft.usedAmount) <= 0) {
+    state.activeModal.error = 'Selecione o ingrediente e informe a quantidade usada.';
+    render();
+    return;
+  }
+  delete draft.draft;
+  closeModal();
+}
+
 async function handleDeleteAccountSubmit(form) {
   const formData = new FormData(form);
   if (formData.get('confirmText') !== 'EXCLUIR') {
@@ -1704,8 +1770,15 @@ app.addEventListener('click', (event) => {
       render();
       break;
     case 'add-ingredient':
-      getEditor(editorKey).ingredients.push(newIngredient());
-      render();
+      if (editorKey === 'detail') {
+        openAddRecipeIngredientModal();
+      } else {
+        getEditor(editorKey).ingredients.push(newIngredient());
+        render();
+      }
+      break;
+    case 'confirm-add-recipe-ingredient':
+      handleConfirmAddRecipeIngredient();
       break;
     case 'remove-ingredient': {
       const ed = getEditor(editorKey);
