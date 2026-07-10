@@ -1,5 +1,8 @@
 @use '../abstracts' as *;
 
+// Botões em linha flat: sem sombra/elevação no hover, só um leve
+// escurecimento (filter: brightness) que funciona igual em qualquer
+// variante de cor (primary, ghost, danger).
 button {
   font: inherit;
   border: 0;
@@ -8,36 +11,35 @@ button {
   color: #fff;
   cursor: pointer;
   font-weight: $fw-bold;
-  padding: 0.85rem 1.2rem;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  font-size: 0.9rem;
+  padding: 0.6rem 1rem;
+  transition: filter 0.15s ease, opacity 0.15s ease;
 
   &:hover {
-    box-shadow: 0 10px 24px rgba($primary-500, 0.22);
-    transform: translateY(-1px);
+    filter: brightness(0.94);
   }
 
   &:disabled {
     opacity: 0.6;
     cursor: not-allowed;
-    transform: none;
-    box-shadow: none;
+    filter: none;
   }
 
   &.ghost {
     background: $surface-tint;
     color: $primary-500;
-    padding-inline: 1rem;
+    padding-inline: 0.9rem;
   }
 
   &.danger {
     background: $danger-100;
     color: $danger-500;
-    padding-inline: 1rem;
+    padding-inline: 0.9rem;
   }
 }
 
 .icon-btn {
-  padding: 0.7rem;
+  padding: 0.55rem;
   display: inline-flex;
 
   .icon {
