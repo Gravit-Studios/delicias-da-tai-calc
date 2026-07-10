@@ -131,14 +131,29 @@ export async function uploadProductPhoto(userId, file) {
   return data.publicUrl;
 }
 
+// Lista as receitas já com os itens de ingrediente de cada uma (uma única
+// consulta extra, agrupada em memória) para dar para calcular o custo/preço
+// sugerido de cada receita direto na listagem, sem N+1 consultas.
 export async function listProducts(userId) {
-  const { data, error } = await supabase
+  const { data: products, error } = await supabase
     .from('products')
     .select('*')
     .eq('user_id', userId)
     .order('updated_at', { ascending: false });
   if (error) throw error;
-  return data;
+
+  const { data: items, error: itemsError } = await supabase
+    .from('product_ingredients')
+    .select('*')
+    .eq('user_id', userId);
+  if (itemsError) throw itemsError;
+
+  const itemsByProduct = new Map();
+  for (const item of items) {
+    if (!itemsByProduct.has(item.product_id)) itemsByProduct.set(item.product_id, []);
+    itemsByProduct.get(item.product_id).push(item);
+  }
+  return products.map((product) => ({ ...product, ingredients: itemsByProduct.get(product.id) || [] }));
 }
 
 export async function loadProductWithIngredients(productId) {

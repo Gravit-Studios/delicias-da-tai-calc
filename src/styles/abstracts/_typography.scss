@@ -12,10 +12,12 @@ $fs-body: 1rem;
 $fs-sm: 0.88rem;
 $fs-xs: 0.78rem;
 
+// Escala reduzida de pesos: evita excesso de negrito/black no app inteiro
+// (antes ia até 900 em quase tudo). Bold vira o teto real usado na UI.
 $fw-regular: 400;
-$fw-medium: 600;
-$fw-bold: 700;
-$fw-black: 900;
+$fw-medium: 500;
+$fw-bold: 600;
+$fw-black: 700;
 
 $lh-tight: 1.15;
 $lh-body: 1.6;

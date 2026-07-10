@@ -166,6 +166,86 @@
   }
 }
 
+// Ícone de filtro por coluna (tabelas grandes, ex.: Ingredientes): abre uma
+// lista de valores distintos daquela coluna para marcar/desmarcar.
+.th-filter {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.th-filter-btn {
+  background: none;
+  padding: 2px;
+  display: inline-flex;
+  color: $ink-400;
+
+  .icon {
+    width: 13px;
+    height: 13px;
+  }
+
+  &:hover {
+    box-shadow: none;
+    transform: none;
+    color: $ink-700;
+  }
+
+  &.active {
+    color: $primary-500;
+  }
+}
+
+.th-filter-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 10;
+  background: $surface;
+  border: 1px solid $border;
+  border-radius: $radius-sm;
+  box-shadow: $shadow-md;
+  padding: 10px;
+  min-width: 170px;
+  max-height: 220px;
+  overflow-y: auto;
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+.th-filter-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 2px;
+  font-weight: $fw-regular;
+  color: $ink-900;
+  cursor: pointer;
+  white-space: nowrap;
+
+  input {
+    width: auto;
+  }
+}
+
+.th-filter-clear {
+  display: block;
+  width: 100%;
+  margin-top: 6px;
+  background: none;
+  color: $secondary-600;
+  font-size: $fs-xs;
+  padding: 4px 2px;
+  text-align: left;
+
+  &:hover {
+    box-shadow: none;
+    transform: none;
+    text-decoration: underline;
+  }
+}
+
 // Variante editável: cada célula carrega um input/combobox em vez de texto.
 .data-table-editable {
   td {

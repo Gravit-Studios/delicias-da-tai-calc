@@ -83,6 +83,8 @@ const state = {
   pendingAction: null,
   ingredientSearch: '',
   supplierSearch: '',
+  ingredientColumnFilters: {},
+  openIngredientFilterColumn: null,
 
   profile: { fullName: '', role: 'user' },
   profileMenuOpen: false,
@@ -278,6 +280,8 @@ onAuthStateChange((session) => {
     state.suppliers = [];
     state.ingredientSearch = '';
     state.supplierSearch = '';
+    state.ingredientColumnFilters = {};
+    state.openIngredientFilterColumn = null;
     state.profile = { fullName: '', role: 'user' };
     state.profileMenuOpen = false;
   }
@@ -372,6 +376,7 @@ const ICON_PATHS = {
   chevronDown: '<path d="M6 9l6 6 6-6"/>',
   key: '<circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M16 7l3 3M13 10l2 2"/>',
   shield: '<path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6l7-3Z"/>',
+  filter: '<path d="M4 5h16M7 12h10M10 19h4"/>',
 };
 
 function icon(name, extraClass = '') {
@@ -533,11 +538,30 @@ function pricingResultBlock(editor) {
   </aside>`;
 }
 
+// Custo/preço sugerido de uma receita a partir dos itens já trazidos junto
+// com a listagem (db.listProducts inclui os ingredientes de cada receita).
+function pricingForProduct(product) {
+  return calculatePricing({
+    ingredients: (product.ingredients || []).map((item) => ({
+      packagePrice: item.package_price,
+      packageAmount: item.package_amount,
+      usedAmount: item.used_amount,
+    })),
+    expenseCategories: state.expenseCategories,
+    profitTiers: state.profitTiers,
+    yieldAmount: product.yield_amount,
+  });
+}
+
 function productsTable(list) {
   return `<div class="table-scroll"><table class="data-table data-table-clickable">
-    <thead><tr><th>Receita</th><th>Rendimento</th><th></th></tr></thead>
+    <thead><tr><th>Receita</th><th>Qnt. por forma</th><th>Preço un.</th><th></th></tr></thead>
     <tbody>
-      ${list.map((product) => `
+      ${list.map((product) => {
+        const pricing = pricingForProduct(product);
+        const mainTier = pricing.tiers.find((t) => t.name === 'Média') || pricing.tiers[0];
+        const priceUn = mainTier ? formatCurrency(mainTier.unitPrice) : formatCurrency(pricing.unitCost);
+        return `
         <tr data-action="open-produto" data-id="${product.id}">
           <td>
             <div class="table-row-title">
@@ -548,8 +572,10 @@ function productsTable(list) {
             </div>
           </td>
           <td>${product.yield_amount} un.</td>
+          <td>${priceUn}</td>
           <td class="data-table-actions"><span class="item-card-link">Ver detalhes ${icon('arrow')}</span></td>
-        </tr>`).join('')}
+        </tr>`;
+      }).join('')}
     </tbody>
   </table></div>`;
 }
@@ -939,16 +965,56 @@ function renderWizardReview(editor) {
   </div>`;
 }
 
+// Colunas filtráveis da tabela de ingredientes: nome da coluna -> como ler o
+// valor "de exibição" de cada linha (usado tanto para listar as opções do
+// filtro quanto para comparar contra o filtro ativo).
+const INGREDIENT_COLUMNS = [
+  { key: 'name', label: 'Nome', value: (i) => i.name },
+  { key: 'category', label: 'Categoria', value: (i) => i.category || '—' },
+  { key: 'price', label: 'Preço', value: (i) => formatCurrency(i.package_price) },
+  { key: 'amount', label: 'Qtd.', value: (i) => `${i.package_amount}${i.unit}` },
+  { key: 'brand', label: 'Marca', value: (i) => i.brand || '—' },
+];
+
+// Cabeçalho de coluna com ícone de filtro: abre uma lista com os valores
+// distintos daquela coluna (a partir de todos os ingredientes) para marcar/
+// desmarcar — útil quando a base de ingredientes cresce bastante.
+function filterableTh(column, allRows) {
+  const isOpen = state.openIngredientFilterColumn === column.key;
+  const active = state.ingredientColumnFilters[column.key];
+  const hasActive = active && active.size > 0;
+  const options = Array.from(new Set(allRows.map(column.value))).sort((a, b) => a.localeCompare(b, 'pt-BR'));
+  return `<th>
+    <span class="th-filter">
+      <span>${escapeHtml(column.label)}</span>
+      <button type="button" class="th-filter-btn ${hasActive ? 'active' : ''}" data-action="toggle-ingredient-filter" data-column="${column.key}">${icon('filter')}</button>
+      ${isOpen ? `
+        <div class="th-filter-menu">
+          ${options.map((opt) => `
+            <label class="th-filter-option">
+              <input type="checkbox" data-filter-column="${column.key}" data-filter-value="${escapeHtml(opt)}" ${active && active.has(opt) ? 'checked' : ''} />
+              <span>${escapeHtml(opt)}</span>
+            </label>`).join('')}
+          ${hasActive ? `<button type="button" class="th-filter-clear" data-action="clear-ingredient-filter" data-column="${column.key}">Limpar filtro</button>` : ''}
+        </div>` : ''}
+    </span>
+  </th>`;
+}
+
 function renderIngredientesPage() {
   const query = state.ingredientSearch.trim().toLowerCase();
-  const filtered = query
+  const searched = query
     ? state.savedIngredients.filter((i) => i.name.toLowerCase().includes(query)
       || (i.category || '').toLowerCase().includes(query)
       || (i.brand || '').toLowerCase().includes(query))
     : state.savedIngredients;
+  const filtered = searched.filter((i) => INGREDIENT_COLUMNS.every(({ key, value }) => {
+    const active = state.ingredientColumnFilters[key];
+    return !active || active.size === 0 || active.has(value(i));
+  }));
   const list = filtered.length > 0
     ? `<div class="table-scroll"><table class="data-table">
-        <thead><tr><th>Nome</th><th>Categoria</th><th>Preço</th><th>Qtd.</th><th>Marca</th><th></th></tr></thead>
+        <thead><tr>${INGREDIENT_COLUMNS.map((column) => filterableTh(column, state.savedIngredients)).join('')}<th></th></tr></thead>
         <tbody>
           ${filtered.map((i) => `
             <tr>
@@ -1688,7 +1754,17 @@ async function handleDeleteSupplier(id) {
 
 app.addEventListener('change', async (event) => {
   const target = event.target;
-  if (!target.dataset || !target.dataset.photoInput) return;
+  if (!target.dataset) return;
+  if (target.dataset.filterColumn) {
+    const column = target.dataset.filterColumn;
+    const value = target.dataset.filterValue;
+    const set = state.ingredientColumnFilters[column] || new Set();
+    if (target.checked) set.add(value); else set.delete(value);
+    state.ingredientColumnFilters[column] = set;
+    render();
+    return;
+  }
+  if (!target.dataset.photoInput) return;
   const file = target.files?.[0];
   if (!file) return;
   const ed = getEditor(target.dataset.photoInput);
@@ -1855,6 +1931,14 @@ app.addEventListener('click', (event) => {
     case 'add-ingredient-modal':
       openModal('add-ingredient');
       break;
+    case 'toggle-ingredient-filter':
+      state.openIngredientFilterColumn = state.openIngredientFilterColumn === el.dataset.column ? null : el.dataset.column;
+      render();
+      break;
+    case 'clear-ingredient-filter':
+      delete state.ingredientColumnFilters[el.dataset.column];
+      render();
+      break;
     case 'add-supplier-modal':
       openModal('add-supplier');
       break;
@@ -1928,6 +2012,10 @@ app.addEventListener('click', (event) => {
   }
   if (state.openCombobox && !event.target.closest('.combobox')) {
     state.openCombobox = null;
+    render();
+  }
+  if (state.openIngredientFilterColumn && !event.target.closest('.th-filter')) {
+    state.openIngredientFilterColumn = null;
     render();
   }
   if (event.target.classList.contains('modal-overlay')) {
