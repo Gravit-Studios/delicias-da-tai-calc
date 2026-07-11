@@ -99,6 +99,7 @@ const state = {
   pendingAction: null,
   ingredientSearch: '',
   supplierSearch: '',
+  productSearch: '',
   ingredientColumnFilters: {},
   openIngredientFilterColumn: null,
 
@@ -346,6 +347,7 @@ onAuthStateChange((session) => {
     state.suppliers = [];
     state.ingredientSearch = '';
     state.supplierSearch = '';
+    state.productSearch = '';
     state.ingredientColumnFilters = {};
     state.openIngredientFilterColumn = null;
     state.profile = { fullName: '', role: 'user', approvalStatus: 'approved' };
@@ -1126,6 +1128,10 @@ function renderDashboard() {
 
 function renderProdutosPage() {
   const selectedCount = state.selectedProducts.size;
+  const query = state.productSearch.trim().toLowerCase();
+  const filtered = query
+    ? state.savedProducts.filter((p) => p.name.toLowerCase().includes(query))
+    : state.savedProducts;
   return `
     <div class="section-header">
       <div><p class="eyebrow">Receitas</p><h2>Suas receitas salvas</h2></div>
@@ -1141,7 +1147,11 @@ function renderProdutosPage() {
         </div>
       </div>` : ''}
     <div class="panel">
-      ${state.dataLoading ? loadingMsg() : (state.savedProducts.length ? productsTable(state.savedProducts) : emptyState('Você ainda não salvou nenhuma receita.', true))}
+      ${state.savedProducts.length ? `<input class="search-input" type="search" name="productSearch" data-search="products" placeholder="Buscar por nome..." value="${escapeHtml(state.productSearch)}" />` : ''}
+      ${state.dataLoading ? loadingMsg() : (
+        state.savedProducts.length === 0 ? emptyState('Você ainda não salvou nenhuma receita.', true)
+          : filtered.length ? productsTable(filtered) : emptyState('Nenhuma receita encontrada.', false)
+      )}
     </div>
   `;
 }
@@ -2767,6 +2777,11 @@ app.addEventListener('input', (event) => {
   }
   if (target.dataset.search === 'ingredients') {
     state.ingredientSearch = target.value;
+    render();
+    return;
+  }
+  if (target.dataset.search === 'products') {
+    state.productSearch = target.value;
     render();
     return;
   }
