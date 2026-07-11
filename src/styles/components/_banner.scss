@@ -4,16 +4,23 @@
 // do .page com o truque 100vw/margin negativa), mas o texto por dentro fica
 // alinhado ao container padrão de conteúdo (.banner-inner, mesma largura do
 // .page) em vez de colado na borda da tela.
+// margin-top negativo cancela o padding-top do .page (28px/20px, ver
+// _layout.scss) pra colar o banner na navbar em vez de deixar uma faixa em
+// branco entre os dois.
 .banner {
   position: relative;
   overflow: hidden;
-  margin-bottom: 24px;
+  margin: -28px 0 24px;
   width: 100vw;
   margin-left: calc(50% - 50vw);
   margin-right: calc(50% - 50vw);
   min-height: 200px;
   display: flex;
   align-items: center;
+
+  @include respond-down($bp-tablet) {
+    margin-top: -20px;
+  }
 }
 
 .banner-photo {
