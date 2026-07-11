@@ -53,7 +53,7 @@
 
   &:hover {
     background: none;
-    color: $primary-500;
+    color: $primary-600;
     box-shadow: none;
     transform: none;
   }
@@ -116,7 +116,7 @@
 
 .status-pill-pending {
   background: rgba($secondary-500, 0.12);
-  color: $secondary-500;
+  color: $secondary-600;
 }
 
 .status-pill-danger {
@@ -204,7 +204,7 @@
   margin-bottom: 16px;
   border-radius: $radius-sm;
   background: $surface-tint;
-  color: $primary-500;
+  color: $primary-600;
   font-weight: $fw-bold;
 }
 
@@ -241,7 +241,7 @@
   }
 
   &.active {
-    color: $primary-500;
+    color: $primary-600;
   }
 }
 

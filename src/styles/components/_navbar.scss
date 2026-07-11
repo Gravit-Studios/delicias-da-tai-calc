@@ -26,7 +26,7 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  color: $primary-500;
+  color: $primary-600;
   font-family: $font-heading;
   font-weight: $fw-black;
   font-size: 1.05rem;
@@ -107,7 +107,7 @@
   }
 
   &.active {
-    color: $primary-500;
+    color: $primary-600;
     background: none;
     font-weight: $fw-regular;
 

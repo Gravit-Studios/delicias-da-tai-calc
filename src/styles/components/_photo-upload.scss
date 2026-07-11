@@ -34,7 +34,7 @@
   height: 120px;
   border-radius: $radius-md;
   background: $surface-tint;
-  color: $secondary-500;
+  color: $secondary-600;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -52,7 +52,7 @@
   gap: 2px;
 
   strong {
-    color: $primary-500;
+    color: $primary-600;
     font-weight: $fw-bold;
     font-size: 0.95rem;
   }

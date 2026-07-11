@@ -19,7 +19,7 @@ textarea {
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
 
   &:focus {
-    @include focus-ring($secondary-500);
+    @include focus-ring($secondary-600);
   }
 
   &::placeholder {

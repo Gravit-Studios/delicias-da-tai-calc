@@ -7,7 +7,12 @@ button {
   font: inherit;
   border: 0;
   border-radius: $radius-sm;
-  background: $primary-500;
+  // $primary-500 é a cor de marca exata, mas é clara demais pra garantir
+  // contraste confiável com texto branco (a nova paleta é bem mais vibrante
+  // que a antiga) — o botão/texto de ação usa $primary-600, um tom mais
+  // profundo da mesma família, mantendo a marca (500) pra ícones, links e
+  // acentos menores onde o fundo já é claro.
+  background: $primary-600;
   color: #fff;
   cursor: pointer;
   font-weight: $fw-bold;
@@ -27,7 +32,7 @@ button {
 
   &.ghost {
     background: $surface-tint;
-    color: $primary-500;
+    color: $primary-600;
     padding-inline: 0.9rem;
   }
 
