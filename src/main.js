@@ -2064,6 +2064,8 @@ function renderLegalPage(title, paragraphs) {
 function renderTermosPage() {
   return renderLegalPage('Termos de uso', [
     'Ao usar o Doce Preço, você concorda em utilizar a ferramenta para calcular preços e organizar receitas, ingredientes e despesas do seu próprio negócio.',
+    'Oferecemos um período de teste grátis de 7 dias com acesso completo à ferramenta. Depois desse período, a continuidade do uso depende da contratação de um dos planos pagos (Básico ou Pro).',
+    'A cobrança dos planos pagos é processada por uma plataforma de pagamentos parceira (Mercado Pago). O Doce Preço não processa nem armazena os dados do seu cartão em nenhum momento — veja detalhes na Política de Privacidade.',
     'Os cálculos apresentados são estimativas baseadas nos dados informados por você; a conferência dos valores antes de aplicá-los é de responsabilidade do usuário.',
     'Não é permitido usar a plataforma para armazenar dados de terceiros sem autorização, nem tentar acessar contas ou dados de outros usuários.',
     'Podemos atualizar estes termos periodicamente; o uso contínuo do app após uma atualização representa a aceitação dos novos termos.',
@@ -2072,7 +2074,8 @@ function renderTermosPage() {
 
 function renderPrivacidadePage() {
   return renderLegalPage('Política de privacidade', [
-    'Coletamos apenas os dados necessários para o funcionamento do app: nome, e-mail e as informações que você cadastra (receitas, ingredientes, despesas e fornecedores).',
+    'Coletamos apenas os dados necessários para o funcionamento do app: nome, e-mail e as informações que você cadastra (receitas, ingredientes, despesas, fornecedores e clientes).',
+    'Não coletamos nem armazenamos dados de cartão de crédito ou débito. Quando você contrata um plano pago, o pagamento é processado diretamente pela plataforma parceira (Mercado Pago), que tem seus próprios controles de segurança; o Doce Preço recebe apenas a confirmação de que o pagamento foi aprovado.',
     'Seus dados não são vendidos nem compartilhados com terceiros para fins de marketing.',
     'Você pode atualizar suas informações pessoais, trocar sua senha ou excluir permanentemente sua conta e todos os seus dados a qualquer momento, pelo menu de perfil.',
     'Em conformidade com a LGPD, você tem direito a solicitar acesso, correção ou exclusão dos seus dados pessoais.',
