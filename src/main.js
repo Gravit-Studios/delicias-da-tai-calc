@@ -1482,7 +1482,6 @@ function renderDespesasPage() {
 
   return `
     ${pageBanner('Base de despesas', 'Custos fixos mensais')}
-    <p>Cada despesa é alocada por receita usando o percentual informado (ex.: R$250 de energia × 1% = R$2,50 por receita).</p>
     ${statusBox()}
     <div class="panel">
       <div class="action-row">
@@ -1490,6 +1489,7 @@ function renderDespesasPage() {
       </div>
       ${state.dataLoading ? loadingMsg() : list}
       ${state.expenseCategories.length > 0 ? `<p class="status-message" style="margin-top:16px;">Total alocado por receita: <strong>${formatCurrency(total)}</strong></p>` : ''}
+      <p class="form-hint" style="margin-top:16px;">Cada despesa é alocada por receita usando o percentual informado (ex.: R$250 de energia × 1% = R$2,50 por receita).</p>
     </div>`;
 }
 
@@ -1518,13 +1518,13 @@ function renderLucroPage() {
 
   return `
     ${pageBanner('Base de lucro', 'Níveis de margem')}
-    <p>Cada nível multiplica o custo por unidade para sugerir o preço de venda (ex.: margem de 250% = custo × 2,5 no nível Mínimo).</p>
     ${statusBox()}
     <div class="panel">
       <div class="action-row">
         <button type="button" data-action="add-tier">Adicionar novo</button>
       </div>
       ${state.dataLoading ? loadingMsg() : list}
+      <p class="form-hint" style="margin-top:16px;">Cada nível multiplica o custo por unidade para sugerir o preço de venda (ex.: margem de 250% = custo × 2,5 no nível Mínimo).</p>
     </div>`;
 }
 
