@@ -277,6 +277,10 @@ function startWizard() {
 function handleRouteChange(route) {
   state.route = route;
   state.mobileMenuOpen = false;
+  if (!state.session) {
+    if (route.path === 'cadastro') state.authMode = 'signup';
+    if (route.path === 'entrar') state.authMode = 'signin';
+  }
   if (route.path === 'produto' && route.param && state.detail.productId !== route.param) {
     ensureDetailLoaded(route.param);
     return;
@@ -1718,6 +1722,155 @@ function siteFooter() {
     </footer>`;
 }
 
+// ---------------- Landing page pública (vendas) ----------------
+
+const LANDING_BENEFITS = [
+  { icon: 'trending', title: 'Nunca mais venda no prejuízo', text: 'Descubra o preço certo de cada doce com base no custo real de ingredientes e despesas.' },
+  { icon: 'cupcake', title: 'Receitas sempre organizadas', text: 'Cadastre ingredientes, quantidades e embalagens usados em cada receita, tudo em um só lugar.' },
+  { icon: 'wallet', title: 'Despesas sob controle', text: 'Rateie gás, luz, água e outras despesas fixas automaticamente entre suas receitas.' },
+  { icon: 'truck', title: 'Fornecedores organizados', text: 'Guarde contatos, preços e condições dos seus fornecedores num só lugar.' },
+  { icon: 'clock', title: 'Economize tempo', text: 'Preço sugerido calculado na hora, sem depender de planilha.' },
+  { icon: 'shield', title: 'Seus dados protegidos', text: 'Conforme a LGPD, com acesso só seu — você pode excluir tudo quando quiser.' },
+];
+
+const LANDING_STEPS = [
+  { title: 'Cadastre ingredientes e despesas', text: 'Preço de compra, quantidade comprada e as despesas fixas do seu negócio.' },
+  { title: 'Monte suas receitas', text: 'Adicione os ingredientes usados e a quantidade de cada um por receita.' },
+  { title: 'Veja o preço sugerido', text: 'Com a margem de lucro que você escolher, calculada na hora.' },
+];
+
+const LANDING_PLANS = [
+  {
+    key: 'basico',
+    name: 'Básico',
+    price: 19.9,
+    description: 'Para quem está começando a organizar os preços.',
+    features: [
+      'Até 5 receitas cadastradas',
+      'Ingredientes, despesas e níveis de lucro',
+      'Cálculo automático de preço sugerido',
+    ],
+    highlight: false,
+  },
+  {
+    key: 'pro',
+    name: 'Pro',
+    price: 39.9,
+    description: 'Para quem quer controlar o negócio inteiro.',
+    features: [
+      'Receitas ilimitadas',
+      'Tudo do plano Básico',
+      'Gestão de fornecedores',
+      'Gestão da empresa (CNPJ, endereço, links de delivery)',
+    ],
+    highlight: true,
+  },
+];
+
+function landingNav() {
+  return `
+    <header class="navbar landing-nav">
+      <div class="navbar-inner">
+        <button type="button" class="brand" data-action="goto" data-route="inicio">
+          <span class="brand-mark"></span> Doce Preço
+        </button>
+        <ul class="landing-nav-links">
+          <li><a href="#beneficios">Benefícios</a></li>
+          <li><a href="#como-funciona">Como funciona</a></li>
+          <li><a href="#precos">Preços</a></li>
+        </ul>
+        <div class="landing-nav-actions">
+          <button type="button" class="text-link" data-action="goto" data-route="entrar">Entrar</button>
+          <button type="button" data-action="goto" data-route="cadastro">Teste grátis</button>
+        </div>
+      </div>
+    </header>`;
+}
+
+function landingHtml() {
+  return `
+    <div class="landing">
+      ${landingNav()}
+      <section class="landing-hero">
+        <div class="landing-section-inner landing-hero-inner">
+          <div class="landing-hero-copy">
+            <p class="eyebrow">Precificação para confeitaria</p>
+            <h1>Pare de vender seus doces no prejuízo</h1>
+            <p class="landing-hero-subtitle">O Doce Preço calcula o preço certo de cada receita com base no custo real de ingredientes, despesas e a margem de lucro que você quer ganhar.</p>
+            <div class="landing-hero-actions">
+              <button type="button" data-action="goto" data-route="cadastro">Testar grátis por 7 dias</button>
+              <a href="#precos" class="landing-link-cta">Ver planos e preços</a>
+            </div>
+            <p class="landing-hero-note">Sem cartão de crédito para começar. Cancele quando quiser.</p>
+          </div>
+          <div class="landing-hero-visual">
+            <img src="/assets/bg-login.webp" alt="" />
+          </div>
+        </div>
+      </section>
+
+      <section class="landing-section" id="beneficios">
+        <div class="landing-section-inner">
+          <p class="eyebrow">Benefícios</p>
+          <h2>Tudo que sua confeitaria precisa pra precificar certo</h2>
+          <div class="landing-benefits-grid">
+            ${LANDING_BENEFITS.map((b) => `
+              <div class="landing-benefit-card">
+                <div class="landing-benefit-icon">${icon(b.icon)}</div>
+                <h3>${escapeHtml(b.title)}</h3>
+                <p>${escapeHtml(b.text)}</p>
+              </div>`).join('')}
+          </div>
+        </div>
+      </section>
+
+      <section class="landing-section landing-section-tint" id="como-funciona">
+        <div class="landing-section-inner">
+          <p class="eyebrow">Como funciona</p>
+          <h2>Comece a precificar em 3 passos</h2>
+          <div class="landing-steps">
+            ${LANDING_STEPS.map((step, index) => `
+              <div class="landing-step">
+                <span class="landing-step-number">${index + 1}</span>
+                <h3>${escapeHtml(step.title)}</h3>
+                <p>${escapeHtml(step.text)}</p>
+              </div>`).join('')}
+          </div>
+        </div>
+      </section>
+
+      <section class="landing-section" id="precos">
+        <div class="landing-section-inner">
+          <p class="eyebrow">Planos</p>
+          <h2>Escolha o plano da sua confeitaria</h2>
+          <p class="landing-section-subtitle">Todos os planos incluem 7 dias de teste grátis. Cancele quando quiser.</p>
+          <div class="landing-pricing-grid">
+            ${LANDING_PLANS.map((plan) => `
+              <div class="landing-plan-card ${plan.highlight ? 'is-highlight' : ''}">
+                ${plan.highlight ? '<span class="landing-plan-badge">Mais popular</span>' : ''}
+                <h3>${escapeHtml(plan.name)}</h3>
+                <p class="landing-plan-description">${escapeHtml(plan.description)}</p>
+                <p class="landing-plan-price">${formatCurrency(plan.price)}<span>/mês</span></p>
+                <ul class="landing-plan-features">
+                  ${plan.features.map((f) => `<li>${icon('check')}<span>${escapeHtml(f)}</span></li>`).join('')}
+                </ul>
+                <button type="button" class="${plan.highlight ? '' : 'ghost'}" data-action="goto" data-route="cadastro">Testar grátis por 7 dias</button>
+              </div>`).join('')}
+          </div>
+        </div>
+      </section>
+
+      <section class="landing-cta">
+        <div class="landing-section-inner landing-cta-inner">
+          <h2>Pronta pra saber o preço certo dos seus doces?</h2>
+          <button type="button" data-action="goto" data-route="cadastro">Testar grátis por 7 dias</button>
+        </div>
+      </section>
+
+      ${siteFooter()}
+    </div>`;
+}
+
 function renderLegalPage(title, paragraphs) {
   return `
     <div class="section-header">
@@ -1752,7 +1905,7 @@ function authHtml() {
   return `
     <div class="auth-page">
       <div class="auth-form-side">
-        <div class="auth-brand"><span class="brand-mark"></span> Doce Preço</div>
+        <button type="button" class="auth-brand" data-action="goto" data-route="inicio"><span class="brand-mark"></span> Doce Preço</button>
         <div class="auth-form-inner">
           <p class="eyebrow">${isSignUp ? 'Comece agora' : 'Bem-vindo de volta'}</p>
           <h1 class="auth-title">${isSignUp ? 'Crie sua conta' : 'Acesse sua conta'}</h1>
@@ -1788,9 +1941,29 @@ function authHtml() {
     ${modalOverlay()}`;
 }
 
+// Antes do login, a rota decide entre a landing page de vendas e o
+// formulário de entrar/cadastrar — o resto (páginas legais) reaproveita o
+// mesmo conteúdo usado dentro do app, só que num invólucro público (sem o
+// menu/dados de conta do shell autenticado).
+function publicHtml() {
+  if (state.route.path === 'entrar' || state.route.path === 'cadastro') return authHtml();
+  if (state.route.path === 'termos') return publicPageHtml(renderTermosPage());
+  if (state.route.path === 'privacidade') return publicPageHtml(renderPrivacidadePage());
+  return landingHtml();
+}
+
+function publicPageHtml(pageContent) {
+  return `
+    <div class="shell">
+      ${landingNav()}
+      <div class="main-area"><div class="page">${pageContent}</div></div>
+      ${siteFooter()}
+    </div>`;
+}
+
 function render() {
   const restore = captureFocus();
-  app.innerHTML = state.session ? shellHtml() : authHtml();
+  app.innerHTML = state.session ? shellHtml() : publicHtml();
   restoreFocus(restore);
 }
 
@@ -1811,8 +1984,8 @@ async function handleAuthSubmit(form) {
     if (state.authMode === 'signup') {
       await signUp(email, password, fullName, companyName);
       form.reset();
-      state.authMode = 'signin';
       state.authLoading = false;
+      navigate('#/entrar');
       showSuccess('Conta criada! Verifique seu e-mail para confirmar o acesso e aguarde a aprovação de um administrador para começar a usar o app.', 3200);
       return;
     }
@@ -2701,9 +2874,8 @@ app.addEventListener('click', (event) => {
       handleConfirmLeave();
       break;
     case 'auth-tab':
-      state.authMode = el.dataset.mode;
       state.authError = '';
-      render();
+      navigate(`#/${el.dataset.mode === 'signup' ? 'cadastro' : 'entrar'}`);
       break;
     case 'add-ingredient':
       openAddRecipeIngredientModal(editorKey);
