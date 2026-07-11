@@ -43,25 +43,47 @@
   padding: 0 24px;
 }
 
+// Banner full-bleed: a foto ocupa a seção inteira (80vh), com um degradê
+// escuro por trás do texto pra garantir leitura em cima da imagem.
 .landing-hero {
-  padding: clamp(48px, 8vw, 88px) 0;
+  position: relative;
+  height: 80vh;
+  min-height: 460px;
+  max-height: 760px;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+}
+
+.landing-hero-photo {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.landing-hero-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, rgba($ink-900, 0.78) 0%, rgba($ink-900, 0.5) 50%, rgba($ink-900, 0.18) 100%);
 }
 
 .landing-hero-inner {
-  display: flex;
-  align-items: center;
-  gap: clamp(32px, 6vw, 64px);
-
-  @include respond-down($bp-tablet) {
-    flex-direction: column;
-  }
+  position: relative;
+  z-index: 1;
 }
 
 .landing-hero-copy {
-  flex: 1 1 52%;
+  max-width: 620px;
+
+  .eyebrow {
+    color: $tertiary-300;
+  }
 
   h1 {
     margin: 8px 0 16px;
+    color: $white;
   }
 }
 
@@ -69,6 +91,7 @@
   font-size: 1.05rem;
   max-width: 52ch;
   margin: 0 0 28px;
+  color: rgba($white, 0.88);
 }
 
 .landing-hero-actions {
@@ -85,35 +108,19 @@
 }
 
 .landing-link-cta {
-  color: $primary-600;
+  color: $white;
   font-weight: $fw-bold;
-  text-decoration: none;
+  text-decoration: underline;
 
   &:hover {
-    text-decoration: underline;
+    color: $tertiary-300;
   }
 }
 
 .landing-hero-note {
   margin: 0;
-  color: $ink-400;
+  color: rgba($white, 0.7);
   font-size: 0.85rem;
-}
-
-.landing-hero-visual {
-  flex: 1 1 48%;
-
-  img {
-    width: 100%;
-    height: clamp(240px, 32vw, 380px);
-    object-fit: cover;
-    border-radius: $radius-lg;
-    box-shadow: $shadow-lift;
-  }
-
-  @include respond-down($bp-tablet) {
-    width: 100%;
-  }
 }
 
 .landing-section {
@@ -197,16 +204,20 @@
   }
 }
 
-.landing-step-number {
+.landing-step-icon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
+  width: 56px;
+  height: 56px;
   border-radius: $radius-pill;
-  background: $primary-500;
-  color: $white;
-  font-weight: $fw-black;
+  background: $primary-100;
+  color: $primary-600;
+
+  .icon {
+    width: 26px;
+    height: 26px;
+  }
 }
 
 .landing-pricing-grid {

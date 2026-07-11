@@ -1838,9 +1838,9 @@ const LANDING_BENEFITS = [
 ];
 
 const LANDING_STEPS = [
-  { title: 'Cadastre ingredientes e despesas', text: 'Preço de compra, quantidade comprada e as despesas fixas do seu negócio.' },
-  { title: 'Monte suas receitas', text: 'Adicione os ingredientes usados e a quantidade de cada um por receita.' },
-  { title: 'Veja o preço sugerido', text: 'Com a margem de lucro que você escolher, calculada na hora.' },
+  { icon: 'box', title: 'Cadastre ingredientes e despesas', text: 'Preço de compra, quantidade comprada e as despesas fixas do seu negócio.' },
+  { icon: 'whisk', title: 'Monte suas receitas', text: 'Adicione os ingredientes usados e a quantidade de cada um por receita.' },
+  { icon: 'cupcake', title: 'Veja o preço sugerido', text: 'Com a margem de lucro que você escolher, calculada na hora.' },
 ];
 
 const LANDING_PLANS = [
@@ -1896,6 +1896,8 @@ function landingHtml() {
     <div class="landing">
       ${landingNav()}
       <section class="landing-hero">
+        <img src="/assets/bg-login.webp" alt="" class="landing-hero-photo" />
+        <div class="landing-hero-overlay"></div>
         <div class="landing-section-inner landing-hero-inner">
           <div class="landing-hero-copy">
             <p class="eyebrow">Precificação para confeitaria</p>
@@ -1906,9 +1908,6 @@ function landingHtml() {
               <a href="#precos" class="landing-link-cta">Ver planos e preços</a>
             </div>
             <p class="landing-hero-note">Sem cartão de crédito para começar. Cancele quando quiser.</p>
-          </div>
-          <div class="landing-hero-visual">
-            <img src="/assets/bg-login.webp" alt="" />
           </div>
         </div>
       </section>
@@ -1933,9 +1932,9 @@ function landingHtml() {
           <p class="eyebrow">Como funciona</p>
           <h2>Comece a precificar em 3 passos</h2>
           <div class="landing-steps">
-            ${LANDING_STEPS.map((step, index) => `
+            ${LANDING_STEPS.map((step) => `
               <div class="landing-step">
-                <span class="landing-step-number">${index + 1}</span>
+                <span class="landing-step-icon">${icon(step.icon)}</span>
                 <h3>${escapeHtml(step.title)}</h3>
                 <p>${escapeHtml(step.text)}</p>
               </div>`).join('')}
