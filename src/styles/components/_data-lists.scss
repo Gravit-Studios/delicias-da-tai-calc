@@ -163,6 +163,20 @@
   }
 }
 
+// Mesma ideia do .search-row, mas sem busca — só a ação principal
+// (Adicionar novo, Salvar alterações), fora do header com foto.
+.action-row {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 18px;
+
+  @include respond-down($bp-tablet) {
+    > button {
+      width: 100%;
+    }
+  }
+}
+
 .data-table {
   width: 100%;
   border-collapse: collapse;

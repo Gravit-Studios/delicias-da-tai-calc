@@ -115,6 +115,7 @@ const state = {
   cepLookup: { loading: false, error: '' },
   profileMenuOpen: false,
   mobileMenuOpen: false,
+  openNavMenu: null,
   adminAlertsOpen: false,
   successModal: '',
   activeModal: null,
@@ -282,6 +283,7 @@ function startWizard() {
 function handleRouteChange(route) {
   state.route = route;
   state.mobileMenuOpen = false;
+  state.openNavMenu = null;
   if (!state.session) {
     if (route.path === 'cadastro') state.authMode = 'signup';
     if (route.path === 'entrar') state.authMode = 'signin';
@@ -535,7 +537,10 @@ function addRowLink(label, action, editorKey = '') {
 // Cabeçalho padrão de página de base (Configurações, Empresa...): botão
 // "Salvar alterações" à direita, desabilitado até o formulário ficar "sujo".
 function pageHeaderWithSave(eyebrow, title, saveAction, isDirty) {
-  return pageBanner(eyebrow, title, `<button type="button" data-action="${saveAction}" ${isDirty ? '' : 'disabled'}>Salvar alterações</button>`);
+  return `${pageBanner(eyebrow, title)}
+    <div class="action-row">
+      <button type="button" data-action="${saveAction}" ${isDirty ? '' : 'disabled'}>Salvar alterações</button>
+    </div>`;
 }
 
 // Padrão de campo do projeto: label acima do input, erro (se houver) abaixo.
@@ -1447,10 +1452,13 @@ function renderDespesasPage() {
     : emptyState('Nenhuma despesa cadastrada ainda.', false);
 
   return `
-    ${pageBanner('Base de despesas', 'Custos fixos mensais', '<button type="button" data-action="add-expense">Adicionar novo</button>')}
+    ${pageBanner('Base de despesas', 'Custos fixos mensais')}
     <p>Cada despesa é alocada por receita usando o percentual informado (ex.: R$250 de energia × 1% = R$2,50 por receita).</p>
     ${statusBox()}
     <div class="panel">
+      <div class="action-row">
+        <button type="button" data-action="add-expense">Adicionar novo</button>
+      </div>
       ${state.dataLoading ? loadingMsg() : list}
       ${state.expenseCategories.length > 0 ? `<p class="status-message" style="margin-top:16px;">Total alocado por receita: <strong>${formatCurrency(total)}</strong></p>` : ''}
     </div>`;
@@ -1480,10 +1488,13 @@ function renderLucroPage() {
     : emptyState('Nenhum nível de lucro cadastrado ainda.', false);
 
   return `
-    ${pageBanner('Base de lucro', 'Níveis de margem', '<button type="button" data-action="add-tier">Adicionar novo</button>')}
+    ${pageBanner('Base de lucro', 'Níveis de margem')}
     <p>Cada nível multiplica o custo por unidade para sugerir o preço de venda (ex.: margem de 250% = custo × 2,5 no nível Mínimo).</p>
     ${statusBox()}
     <div class="panel">
+      <div class="action-row">
+        <button type="button" data-action="add-tier">Adicionar novo</button>
+      </div>
       ${state.dataLoading ? loadingMsg() : list}
     </div>`;
 }
@@ -1712,6 +1723,26 @@ function navItem(route, label) {
   return `<li><button type="button" class="nav-link ${active ? 'active' : ''}" data-action="goto" data-route="${route}">${label}</button></li>`;
 }
 
+// Agrupa páginas relacionadas num só item de navbar com dropdown, em vez de
+// uma lista cada vez mais longa de links soltos.
+const NAV_GROUPS = [
+  { key: 'gestao', label: 'Gestão', items: [{ route: 'clientes', label: 'Clientes' }, { route: 'empresa', label: 'Empresa' }] },
+  { key: 'controle', label: 'Controle', items: [{ route: 'ingredientes', label: 'Ingredientes' }, { route: 'despesas', label: 'Despesas' }, { route: 'lucro', label: 'Lucro' }] },
+];
+
+function navDropdown(group) {
+  const isActive = group.items.some((item) => item.route === state.route.path);
+  const isOpen = state.openNavMenu === group.key;
+  return `<li class="nav-dropdown">
+    <button type="button" class="nav-link nav-dropdown-trigger ${isActive ? 'active' : ''} ${isOpen ? 'is-open' : ''}" data-action="toggle-nav-menu" data-menu="${group.key}">
+      ${group.label}${icon('chevronDown')}
+    </button>
+    ${isOpen ? `<div class="nav-dropdown-menu">
+      ${group.items.map((item) => `<button type="button" class="profile-dropdown-item ${state.route.path === item.route ? 'active' : ''}" data-action="goto" data-route="${item.route}">${item.label}</button>`).join('')}
+    </div>` : ''}
+  </li>`;
+}
+
 // Menu mobile: um drawer deslizando da lateral, ocupando a tela toda (nav +
 // conta em um único painel), em vez do dropdown embaixo da navbar + o menu de
 // conta separado — os dois viviam soltos e duplicados no mobile.
@@ -1725,12 +1756,9 @@ function mobileDrawer(displayName) {
         </div>
         <ul class="mobile-drawer-nav">
           ${navItem('produtos', 'Receitas')}
-          ${navItem('ingredientes', 'Ingredientes')}
-          ${navItem('despesas', 'Despesas')}
-          ${navItem('lucro', 'Lucro')}
+          ${navDropdown(NAV_GROUPS[1])}
           ${navItem('fornecedores', 'Fornecedores')}
-          ${navItem('clientes', 'Clientes')}
-          ${navItem('empresa', 'Empresa')}
+          ${navDropdown(NAV_GROUPS[0])}
         </ul>
         <div class="mobile-drawer-footer">
           <div class="mobile-drawer-user">
@@ -1813,12 +1841,9 @@ function shellHtml() {
           ${isAdmin ? '' : `
           <ul class="nav-list">
             ${navItem('produtos', 'Receitas')}
-            ${navItem('ingredientes', 'Ingredientes')}
-            ${navItem('despesas', 'Despesas')}
-            ${navItem('lucro', 'Lucro')}
+            ${navDropdown(NAV_GROUPS[1])}
             ${navItem('fornecedores', 'Fornecedores')}
-            ${navItem('clientes', 'Clientes')}
-            ${navItem('empresa', 'Empresa')}
+            ${navDropdown(NAV_GROUPS[0])}
           </ul>`}
           <div class="navbar-user">
             ${isAdmin ? adminAlertsMenu() : ''}
@@ -3241,6 +3266,10 @@ app.addEventListener('click', (event) => {
       state.profileMenuOpen = !state.profileMenuOpen;
       render();
       break;
+    case 'toggle-nav-menu':
+      state.openNavMenu = state.openNavMenu === el.dataset.menu ? null : el.dataset.menu;
+      render();
+      break;
     case 'toggle-admin-alerts':
       state.adminAlertsOpen = !state.adminAlertsOpen;
       render();
@@ -3299,6 +3328,10 @@ app.addEventListener('click', (event) => {
 app.addEventListener('click', (event) => {
   if (state.profileMenuOpen && !event.target.closest('.profile-menu')) {
     state.profileMenuOpen = false;
+    render();
+  }
+  if (state.openNavMenu && !event.target.closest('.nav-dropdown')) {
+    state.openNavMenu = null;
     render();
   }
   if (state.adminAlertsOpen && !event.target.closest('.alerts-menu')) {

@@ -333,6 +333,48 @@
     box-shadow: none;
     transform: none;
   }
+
+  &.active {
+    color: $primary-600;
+  }
+}
+
+// Item do navbar que agrupa páginas relacionadas (Gestão, Controle) num
+// dropdown, em vez de mais um link solto — mesmo visual do .profile-menu.
+.nav-dropdown {
+  position: relative;
+}
+
+.nav-dropdown-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+
+  .icon {
+    width: 14px;
+    height: 14px;
+    transition: transform 0.15s ease;
+  }
+
+  &.is-open .icon {
+    transform: rotate(180deg);
+  }
+}
+
+.nav-dropdown-menu {
+  position: absolute;
+  top: calc(100% + 10px);
+  left: 50%;
+  transform: translateX(-50%);
+  min-width: 160px;
+  background: $surface;
+  border: 1px solid $border;
+  border-radius: $radius-md;
+  box-shadow: $shadow-lift;
+  padding: 8px;
+  display: grid;
+  gap: 2px;
+  z-index: 20;
 }
 
 // Menu mobile: painel deslizando da lateral direita, ocupando a altura toda
@@ -415,6 +457,23 @@
     &.active {
       background: $surface-tint;
     }
+  }
+
+  // No drawer o dropdown vira um acordeon (some inline, sem flutuar por
+  // cima) — já tem espaço vertical de sobra e um menu solto ficaria estranho
+  // dentro de um painel que já é ele mesmo um overlay.
+  .nav-dropdown-trigger {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .nav-dropdown-menu {
+    position: static;
+    transform: none;
+    box-shadow: none;
+    border: 0;
+    background: none;
+    padding: 0 0 0 14px;
   }
 }
 
