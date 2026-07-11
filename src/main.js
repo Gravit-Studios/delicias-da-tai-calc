@@ -2099,21 +2099,23 @@ function landingHtml() {
 
       <section class="landing-section landing-section-tint" id="como-funciona">
         <div class="landing-section-inner">
-          <p class="eyebrow">Como funciona</p>
-          <h2>Comece a precificar em 3 passos</h2>
           <div class="landing-how-grid">
             <div class="landing-how-image reveal">
               <img src="/assets/pexels-anntarazevich-6035994.webp" alt="Confeiteira preparando uma receita" />
             </div>
-            <div class="landing-steps">
-              ${LANDING_STEPS.map((step, index) => `
-                <div class="landing-step" style="--step-delay: ${(index * 0.2).toFixed(2)}s">
-                  <span class="landing-step-icon">${icon(step.icon)}</span>
-                  <div>
-                    <h3>${escapeHtml(step.title)}</h3>
-                    <p>${escapeHtml(step.text)}</p>
-                  </div>
-                </div>`).join('')}
+            <div class="landing-how-content">
+              <p class="eyebrow">Como funciona</p>
+              <h2>Comece a precificar em 3 passos</h2>
+              <div class="landing-steps">
+                ${LANDING_STEPS.map((step, index) => `
+                  <div class="landing-step" style="--step-delay: ${(index * 0.2).toFixed(2)}s">
+                    <span class="landing-step-icon">${icon(step.icon)}</span>
+                    <div>
+                      <h3>${escapeHtml(step.title)}</h3>
+                      <p>${escapeHtml(step.text)}</p>
+                    </div>
+                  </div>`).join('')}
+              </div>
             </div>
           </div>
         </div>

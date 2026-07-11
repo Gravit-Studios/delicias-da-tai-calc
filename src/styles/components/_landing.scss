@@ -245,7 +245,6 @@
 // marcadores (26px = metade da largura/altura de .landing-step-icon),
 // então ela não depende da altura de cada bloco de texto pra se alinhar.
 .landing-how-grid {
-  margin-top: 40px;
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 56px;
@@ -267,6 +266,10 @@
   @include respond-down($bp-tablet) {
     aspect-ratio: 16 / 10;
   }
+}
+
+.landing-how-content h2 {
+  margin-bottom: 24px;
 }
 
 .landing-steps {
