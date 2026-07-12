@@ -1316,7 +1316,7 @@ function renderDashboard() {
       <div class="highlight-card highlight-card-cta">
         <div class="highlight-icon highlight-icon-cta">${icon('plus')}</div>
         <span class="eyebrow">Nova receita</span>
-        <strong>Monte uma nova ficha</strong>
+        <strong>Precificar novo produto</strong>
         <button type="button" data-action="start-wizard">Começar ${icon('arrow')}</button>
       </div>
     </div>
@@ -3582,6 +3582,10 @@ app.addEventListener('click', (event) => {
       if (!isProPlan(state.profile) && state.savedProducts.length >= FREE_RECIPE_LIMIT) {
         state.statusMessage = `Você atingiu o limite de ${FREE_RECIPE_LIMIT} receitas do plano Básico. Faça upgrade para o Pro para cadastrar receitas ilimitadas.`;
         render();
+        // O aviso aparece no topo da página — sem isso, clicar em "Começar"
+        // com a página rolada pra baixo (ex.: olhando a lista de receitas)
+        // parecia não fazer nada.
+        window.scrollTo({ top: 0, behavior: 'smooth' });
         break;
       }
       startWizard();

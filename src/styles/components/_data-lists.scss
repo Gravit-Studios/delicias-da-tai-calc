@@ -474,16 +474,32 @@
     // tinha mais especificidade (classe + elemento) e vencia.
     .data-table-actions {
       display: flex;
-      flex-direction: column;
+      flex-direction: row;
       margin-top: 10px;
       padding-top: 10px;
       border-top: 1px solid $secondary-100;
 
       button,
       .item-card-link {
-        width: 100%;
+        flex: 1;
         justify-content: center;
       }
     }
+
+    // O checkbox de seleção múltipla some no cartão do mobile — a ação de
+    // selecionar em massa é secundária lá e só disputava espaço com o
+    // avatar/nome.
+    .table-row-title input[type='checkbox'] {
+      display: none;
+    }
+  }
+
+  // O :hover de .data-table-clickable (ver _product-cards.scss) é pensado
+  // pra mouse; em touch ele fica "grudado" no cartão tocado por último, o
+  // que parece um bug. No mobile trocamos o preenchimento por só destacar
+  // a borda do cartão.
+  .data-table-cards-mobile.data-table-clickable tbody tr:hover {
+    background: none;
+    border-color: $primary-500;
   }
 }
