@@ -61,7 +61,16 @@
   dd.dd-muted {
     font-weight: $fw-regular;
     color: $ink-400;
-    text-align: right;
+  }
+
+  // Variante empilhada (painel "Plano" em Configurações): valores mais
+  // longos (ex.: "Ativado manualmente pela equipe Doce Preço") ficavam
+  // espremidos e quebrando linha ao lado do rótulo — aqui o valor vai
+  // embaixo do rótulo em vez de ao lado.
+  dl.plan-dl div {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
   }
 
   .highlight {

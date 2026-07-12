@@ -1717,7 +1717,7 @@ function planInfoPanel(profile) {
   return `
     <div class="panel summary-panel">
       <h3>Plano</h3>
-      <dl>${rows.join('')}</dl>
+      <dl class="plan-dl">${rows.join('')}</dl>
       ${showUpgrade ? `
         <p class="form-hint" style="margin-top:16px;">Desbloqueie receitas ilimitadas, gestão de clientes, cardápio online e mais.</p>
         <button type="button" style="margin-top:12px;" data-action="request-upgrade">Fazer upgrade</button>` : ''}
