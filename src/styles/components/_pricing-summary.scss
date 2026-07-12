@@ -55,6 +55,15 @@
     font-weight: $fw-bold;
   }
 
+  // Valor "vazio" (ex.: plano ativado manualmente, sem cobrança/data real
+  // ainda) — mais leve que um valor de verdade, pra não parecer um dado
+  // tão firme quanto os outros.
+  dd.dd-muted {
+    font-weight: $fw-regular;
+    color: $ink-400;
+    text-align: right;
+  }
+
   .highlight {
     border: 0;
     border-radius: $radius-md;

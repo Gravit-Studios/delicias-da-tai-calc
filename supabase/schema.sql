@@ -36,7 +36,13 @@ create table if not exists public.profiles (
   -- plano pago o acesso fica bloqueado (ver gating no client, main.js).
   -- Sem checkout automático ainda: a troca pra 'basico'/'pro' é manual.
   plan text not null default 'trial' constraint profiles_plan_check check (plan in ('trial', 'basico', 'pro')),
-  trial_ends_at timestamptz not null default (now() + interval '7 days')
+  trial_ends_at timestamptz not null default (now() + interval '7 days'),
+  -- Preenchidos manualmente enquanto não há checkout automático (Mercado
+  -- Pago pendente): mensal/anual e a data de renovação combinada com o
+  -- cliente. Ficam nulos até serem preenchidos à mão (ver Configurações no
+  -- client, que mostra "ativado manualmente" quando ausentes).
+  plan_billing_cycle text constraint profiles_plan_billing_cycle_check check (plan_billing_cycle in ('mensal', 'anual')),
+  plan_renews_at timestamptz
 );
 alter table public.profiles enable row level security;
 create policy "Usuário vê o próprio perfil" on public.profiles for select using (auth.uid() = id);

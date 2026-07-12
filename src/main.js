@@ -239,6 +239,8 @@ async function loadUserData() {
       approvalStatus: profile.approval_status || 'approved',
       plan: profile.plan || 'trial',
       trialEndsAt: profile.trial_ends_at || null,
+      planBillingCycle: profile.plan_billing_cycle || null,
+      planRenewsAt: profile.plan_renews_at || null,
     };
     // Conta ainda não aprovada pelo super admin: não carrega o resto dos
     // dados nem libera o app — só a tela de "aguardando aprovação".
@@ -1692,6 +1694,36 @@ function renderClientesPage() {
     </div>`;
 }
 
+// Enquanto não existe checkout automático (Mercado Pago pendente), Básico e
+// Pro são ativados manualmente — cobrança/renovação só aparecem quando
+// alguém preenche esses campos à mão; sem eles, mostra que foi ativado
+// manualmente em vez de inventar uma data.
+function planInfoPanel(profile) {
+  const status = planStatus(profile);
+  const rows = [`<div><dt>Plano atual</dt><dd>${planLabel(profile)}</dd></div>`];
+  if (status === 'trial') {
+    const days = trialDaysLeft(profile);
+    rows.push(`<div><dt>Termina em</dt><dd>${formatDate(profile.trialEndsAt)} (${days === 1 ? '1 dia' : `${days} dias`})</dd></div>`);
+  } else {
+    const cycleLabel = profile.planBillingCycle === 'mensal' ? 'Mensal' : profile.planBillingCycle === 'anual' ? 'Anual' : '';
+    rows.push(cycleLabel
+      ? `<div><dt>Cobrança</dt><dd>${cycleLabel}</dd></div>`
+      : `<div><dt>Cobrança</dt><dd class="dd-muted">Ativado manualmente pela equipe Doce Preço</dd></div>`);
+    if (profile.planRenewsAt) {
+      rows.push(`<div><dt>${cycleLabel ? 'Renova em' : 'Vence em'}</dt><dd>${formatDate(profile.planRenewsAt)}</dd></div>`);
+    }
+  }
+  const showUpgrade = status !== 'pro';
+  return `
+    <div class="panel summary-panel">
+      <h3>Plano</h3>
+      <dl>${rows.join('')}</dl>
+      ${showUpgrade ? `
+        <p class="form-hint" style="margin-top:16px;">Desbloqueie receitas ilimitadas, gestão de clientes, cardápio online e mais.</p>
+        <button type="button" style="margin-top:12px;" data-action="request-upgrade">Fazer upgrade</button>` : ''}
+    </div>`;
+}
+
 function renderConfiguracoesPage() {
   const isDirty = JSON.stringify(state.settings) !== state.settingsSnapshot;
   return `
@@ -1704,6 +1736,7 @@ function renderConfiguracoesPage() {
       </div>
       <p class="form-hint">Alterar o e-mail exige confirmação por um link enviado ao novo endereço.</p>
     </div>
+    ${planInfoPanel(state.profile)}
     <div class="panel">
       <h3>Segurança</h3>
       <p class="muted">Troque sua senha periodicamente para manter sua conta segura.</p>
@@ -1931,6 +1964,7 @@ function mobileDrawer(displayName) {
           <span class="brand"><span class="brand-mark"></span> Doce Preço</span>
           <button type="button" class="icon-btn ghost" data-action="toggle-mobile-menu" aria-label="Fechar menu">${icon('close')}</button>
         </div>
+        <div class="mobile-drawer-plan">${planLabel(state.profile)}</div>
         <ul class="mobile-drawer-nav">
           ${navItem('produtos', 'Receitas')}
           ${navDropdown(NAV_GROUPS[1])}

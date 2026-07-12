@@ -20,6 +20,7 @@ export async function getProfile(userId) {
     .from('profiles')
     .select(`
       full_name, company_name, cnpj, role, approval_status, plan, trial_ends_at,
+      plan_billing_cycle, plan_renews_at,
       cep, street, neighborhood, city, state, address_number, complement,
       ifood_url, link_99_url, keeta_url, logo_url, slug
     `)
@@ -28,7 +29,7 @@ export async function getProfile(userId) {
   if (error) throw error;
   return data ?? {
     full_name: null, company_name: null, cnpj: null, role: 'user', approval_status: 'approved',
-    plan: 'trial', trial_ends_at: null,
+    plan: 'trial', trial_ends_at: null, plan_billing_cycle: null, plan_renews_at: null,
     cep: null, street: null, neighborhood: null, city: null, state: null, address_number: null, complement: null,
     ifood_url: null, link_99_url: null, keeta_url: null, logo_url: null, slug: null,
   };
