@@ -643,8 +643,8 @@ function renderMenuFields(editorKey, editor) {
       <label>Categoria<input data-editor="${editorKey}" data-field="menuCategory" value="${escapeHtml(editor.menuCategory)}" placeholder="Ex.: Bolos, Doces, Salgados" /></label>
       <label>Preço no cardápio<div class="input-prefix"><span class="prefix">R$</span><input inputmode="decimal" placeholder="0,00" data-editor="${editorKey}" data-field="menuPrice" value="${escapeHtml(editor.menuPrice)}" /></div></label>
     </div>
-    <label>Descrição<textarea data-editor="${editorKey}" data-field="menuDescription" rows="3" placeholder="Uma breve descrição que aparece na página do produto">${escapeHtml(editor.menuDescription)}</textarea></label>
-    <label class="consent-field">
+    <label style="margin-top:16px;">Descrição<textarea data-editor="${editorKey}" data-field="menuDescription" rows="3" placeholder="Uma breve descrição que aparece na página do produto">${escapeHtml(editor.menuDescription)}</textarea></label>
+    <label class="consent-field" style="margin-top:16px;">
       <input type="checkbox" data-action="toggle-menu-published" ${editor.menuPublished ? 'checked' : ''} />
       <span>Publicar no cardápio</span>
     </label>`;
