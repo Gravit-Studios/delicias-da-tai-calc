@@ -21,7 +21,7 @@ export async function getProfile(userId) {
     .select(`
       full_name, company_name, cnpj, role, approval_status, plan, trial_ends_at,
       cep, street, neighborhood, city, state, address_number, complement,
-      ifood_url, link_99_url, keeta_url
+      ifood_url, link_99_url, keeta_url, logo_url, slug
     `)
     .eq('id', userId)
     .maybeSingle();
@@ -30,12 +30,46 @@ export async function getProfile(userId) {
     full_name: null, company_name: null, cnpj: null, role: 'user', approval_status: 'approved',
     plan: 'trial', trial_ends_at: null,
     cep: null, street: null, neighborhood: null, city: null, state: null, address_number: null, complement: null,
-    ifood_url: null, link_99_url: null, keeta_url: null,
+    ifood_url: null, link_99_url: null, keeta_url: null, logo_url: null, slug: null,
   };
 }
 
 export async function updateProfile(userId, fields) {
   const { data, error } = await supabase.from('profiles').update(fields).eq('id', userId).select().single();
+  if (error) throw error;
+  return data;
+}
+
+export async function uploadCompanyLogo(userId, file) {
+  const extension = file.name.split('.').pop() || 'jpg';
+  const path = `${userId}/logo-${crypto.randomUUID()}.${extension}`;
+  const { error } = await supabase.storage.from('product-photos').upload(path, file, {
+    cacheControl: '3600',
+    upsert: false,
+  });
+  if (error) throw error;
+  const { data } = supabase.storage.from('product-photos').getPublicUrl(path);
+  return data.publicUrl;
+}
+
+// ---------- Cardápio público (sem login — plano Pro, ver views no schema.sql) ----------
+
+export async function getPublicCompany(slug) {
+  const { data, error } = await supabase
+    .from('public_companies')
+    .select('*')
+    .eq('slug', slug)
+    .maybeSingle();
+  if (error) throw error;
+  return data;
+}
+
+export async function getPublicProducts(userId) {
+  const { data, error } = await supabase
+    .from('public_products')
+    .select('*')
+    .eq('user_id', userId)
+    .order('category', { ascending: true });
   if (error) throw error;
   return data;
 }

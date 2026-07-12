@@ -43,6 +43,33 @@ button {
   }
 }
 
+// Mesmo visual dos botões acima, mas em cima de um <a> (ex.: "Ver cardápio"
+// abrindo o link público em nova aba) — os seletores .ghost/.danger de cima
+// ficam aninhados sob `button` e não alcançam um link.
+.button-like {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font: inherit;
+  border-radius: $radius-sm;
+  cursor: pointer;
+  font-weight: $fw-bold;
+  font-size: 0.9rem;
+  padding: 0.6rem 1rem;
+  text-decoration: none;
+  transition: filter 0.15s ease, opacity 0.15s ease;
+
+  &:hover {
+    filter: brightness(0.94);
+  }
+
+  &.ghost {
+    background: $surface-tint;
+    color: $primary-600;
+    padding-inline: 0.9rem;
+  }
+}
+
 .icon-btn {
   padding: 0.55rem;
   display: inline-flex;

@@ -24,6 +24,16 @@ function escapeHtml(value) {
   return String(value ?? '').replace(/[&<>"]/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[char]));
 }
 
+// Vira âncora de seção (categoria do cardápio público) — só letras/números,
+// sem acento, hífen no resto.
+function slugify(value) {
+  return String(value ?? '')
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '') || 'item';
+}
+
 function toNumberSafe(value) {
   const normalized = String(value ?? '').replace(',', '.');
   const parsed = Number(normalized);
@@ -98,6 +108,11 @@ function defaultDetail() {
     photoUrl: '',
     photoFile: null,
     photoPreviewUrl: '',
+    // Campos do cardápio público (recurso do plano Pro) — ver renderMenuFields.
+    menuCategory: '',
+    menuDescription: '',
+    menuPrice: '',
+    menuPublished: false,
     errors: {},
   };
 }
@@ -137,8 +152,10 @@ const state = {
     name: '', cnpj: '',
     cep: '', street: '', neighborhood: '', city: '', state: '', number: '', complement: '',
     ifoodUrl: '', link99Url: '', keetaUrl: '',
+    logoUrl: '', logoFile: null, logoPreviewUrl: '', slug: '',
   },
   cepLookup: { loading: false, error: '' },
+  publicMenu: { slug: null, loading: false, company: null, products: [], error: '' },
   profileMenuOpen: false,
   mobileMenuOpen: false,
   openNavMenu: null,
@@ -256,9 +273,13 @@ async function loadUserData() {
       ifoodUrl: profile.ifood_url || '',
       link99Url: profile.link_99_url || '',
       keetaUrl: profile.keeta_url || '',
+      logoUrl: profile.logo_url || '',
+      logoFile: null,
+      logoPreviewUrl: '',
+      slug: profile.slug || '',
     };
     state.settingsSnapshot = JSON.stringify(state.settings);
-    state.companySnapshot = JSON.stringify(state.company);
+    state.companySnapshot = companySnapshotOf(state.company);
     if (state.profile.role === 'admin' && !state.admin.loading && state.admin.users.length === 0) {
       loadAdminUsers();
     }
@@ -291,6 +312,10 @@ async function ensureDetailLoaded(id) {
       photoUrl: product.photo_url || '',
       photoFile: null,
       photoPreviewUrl: '',
+      menuCategory: product.category || '',
+      menuDescription: product.description || '',
+      menuPrice: product.menu_price ? toDecimalString(product.menu_price) : '',
+      menuPublished: Boolean(product.published),
       errors: {},
     };
     state.detailSnapshot = detailSnapshotOf(state.detail);
@@ -321,6 +346,14 @@ function handleRouteChange(route) {
   }
   if (route.path === 'produto' && route.param && state.detail.productId !== route.param) {
     ensureDetailLoaded(route.param);
+    return;
+  }
+  // Cardápio público: acessível independente de sessão (o próprio lojista
+  // também pode estar logado ao clicar em "Ver cardápio"), então não passa
+  // pelas checagens de auth abaixo.
+  if (route.path === 'cardapio') {
+    if (route.param && state.publicMenu.slug !== route.param) ensurePublicMenuLoaded(route.param);
+    else render();
     return;
   }
   if (state.profile.role === 'admin' && !state.admin.loading && state.admin.users.length === 0) {
@@ -396,6 +429,7 @@ onAuthStateChange((session) => {
       name: '', cnpj: '',
       cep: '', street: '', neighborhood: '', city: '', state: '', number: '', complement: '',
       ifoodUrl: '', link99Url: '', keetaUrl: '',
+      logoUrl: '', logoFile: null, logoPreviewUrl: '', slug: '',
     };
     state.companySnapshot = '{}';
     state.cepLookup = { loading: false, error: '' };
@@ -452,7 +486,17 @@ function detailSnapshotOf(editor) {
     yieldAmount: editor.yieldAmount,
     ingredients: editor.ingredients,
     photoChanged: Boolean(editor.photoFile),
+    menuCategory: editor.menuCategory,
+    menuDescription: editor.menuDescription,
+    menuPrice: editor.menuPrice,
+    menuPublished: editor.menuPublished,
   });
+}
+
+// Mesma ideia acima, mas pra Empresa — logoFile é um Blob (não serializa de
+// forma útil), então vira só um booleano "trocou o logotipo".
+function companySnapshotOf(company) {
+  return JSON.stringify({ ...company, logoFile: Boolean(company.logoFile), logoPreviewUrl: undefined });
 }
 
 // Só as páginas com um "Salvar alterações" persistente entram na checagem:
@@ -461,7 +505,7 @@ function detailSnapshotOf(editor) {
 function hasUnsavedChanges() {
   if (state.route.path === 'produto') return detailSnapshotOf(state.detail) !== state.detailSnapshot;
   if (state.route.path === 'configuracoes') return JSON.stringify(state.settings) !== state.settingsSnapshot;
-  if (state.route.path === 'empresa') return JSON.stringify(state.company) !== state.companySnapshot;
+  if (state.route.path === 'empresa') return companySnapshotOf(state.company) !== state.companySnapshot;
   return false;
 }
 
@@ -586,6 +630,22 @@ function basicFields(editorKey, editor) {
     ${fieldFor(editorKey, 'productName', 'Nome da receita', editor.productName, 'text', errors.productName)}
     ${fieldFor(editorKey, 'yieldAmount', 'Rendimento (Qnt. por forma)', editor.yieldAmount, 'decimal', errors.yieldAmount)}
   </div>`;
+}
+
+// Campos do cardápio público (recurso do plano Pro): categoria, descrição,
+// preço de exibição e o interruptor de publicação por receita.
+function renderMenuFields(editorKey, editor) {
+  return `
+    <p class="muted">Preencha e ative "Publicar no cardápio" para essa receita aparecer no seu cardápio online (ver link na página Empresa).</p>
+    <div class="field-grid">
+      <label>Categoria<input data-editor="${editorKey}" data-field="menuCategory" value="${escapeHtml(editor.menuCategory)}" placeholder="Ex.: Bolos, Doces, Salgados" /></label>
+      <label>Preço no cardápio<div class="input-prefix"><span class="prefix">R$</span><input inputmode="decimal" placeholder="0,00" data-editor="${editorKey}" data-field="menuPrice" value="${escapeHtml(editor.menuPrice)}" /></div></label>
+    </div>
+    <label>Descrição<textarea data-editor="${editorKey}" data-field="menuDescription" rows="3" placeholder="Uma breve descrição que aparece na página do produto">${escapeHtml(editor.menuDescription)}</textarea></label>
+    <label class="consent-field">
+      <input type="checkbox" data-action="toggle-menu-published" ${editor.menuPublished ? 'checked' : ''} />
+      <span>Publicar no cardápio</span>
+    </label>`;
 }
 
 // Lê a quantidade comprada da embalagem e define o teto permitido para a
@@ -828,6 +888,24 @@ function photoUploadField(editorKey, editor) {
         : `<div class="photo-dropzone-icon">${icon('box')}</div>`}
       <div class="photo-dropzone-text">
         <strong>${previewSrc ? 'Trocar foto' : 'Arraste uma foto aqui ou clique para enviar'}</strong>
+        <span>PNG ou JPG</span>
+      </div>
+    </label>`;
+}
+
+// Logotipo da empresa: mesmo componente visual do upload de foto de receita,
+// mas com seus próprios data-attributes (data-logo-*) já que não há um
+// "editor" (wizard/detail) por trás — o alvo é sempre state.company.
+function logoUploadField() {
+  const previewSrc = state.company.logoPreviewUrl || state.company.logoUrl || '';
+  return `
+    <label class="photo-dropzone logo-dropzone" data-logo-drop>
+      <input type="file" accept="image/*" data-logo-input hidden />
+      ${previewSrc
+        ? `<img src="${previewSrc}" alt="Prévia do logotipo" class="photo-preview" />`
+        : `<div class="photo-dropzone-icon">${icon('box')}</div>`}
+      <div class="photo-dropzone-text">
+        <strong>${previewSrc ? 'Trocar logotipo' : 'Arraste um logotipo aqui ou clique para enviar'}</strong>
         <span>PNG ou JPG</span>
       </div>
     </label>`;
@@ -1303,6 +1381,10 @@ function renderProdutoDetalhe(id) {
       ${editor.errors.ingredients ? `<p class="form-error">${escapeHtml(editor.errors.ingredients)}</p>` : ''}
       ${ingredientsTable('detail', editor.ingredients, editor.errors.invalidIngredientIds || new Set())}
     </div>
+    ${isProPlan(state.profile) ? `<div class="panel">
+      <h3>Cardápio público</h3>
+      ${renderMenuFields('detail', editor)}
+    </div>` : ''}
     ${pricingResultBlock(editor)}`;
 }
 
@@ -1635,7 +1717,7 @@ function renderConfiguracoesPage() {
 }
 
 function renderEmpresaPage() {
-  const isDirty = JSON.stringify(state.company) !== state.companySnapshot;
+  const isDirty = companySnapshotOf(state.company) !== state.companySnapshot;
   return `
     ${pageHeaderWithSave('Empresa', 'Dados da empresa', 'save-company', isDirty)}
     ${statusBox()}
@@ -1643,6 +1725,20 @@ function renderEmpresaPage() {
       <div class="field-grid">
         <label>Nome<input name="companyName" data-company-field="name" value="${escapeHtml(state.company.name)}" /></label>
         <label>CNPJ<input name="cnpj" data-company-field="cnpj" value="${escapeHtml(state.company.cnpj)}" placeholder="00.000.000/0000-00" /></label>
+      </div>
+    </div>
+    <div class="panel">
+      <h3>Logotipo</h3>
+      <p class="muted">Aparece no topo do seu cardápio online. O resto da página (produtos, categorias, rodapé) é sempre automático, direto do seu cadastro.</p>
+      ${logoUploadField()}
+    </div>
+    <div class="panel">
+      <h3>Seu cardápio online</h3>
+      <p class="muted">Uma vitrine simples com suas receitas marcadas como "Publicar no cardápio" (ver na página de cada receita). Compartilhe o link com seus clientes.</p>
+      <div class="menu-link-row">
+        <input type="text" readonly value="${escapeHtml(publicMenuUrl(state.company.slug))}" data-action="select-menu-link" />
+        <button type="button" class="ghost" data-action="copy-menu-link">Copiar link</button>
+        <a class="ghost button-like" href="#/cardapio/${escapeHtml(state.company.slug)}" target="_blank" rel="noopener">Ver cardápio</a>
       </div>
     </div>
     <div class="panel">
@@ -2279,9 +2375,160 @@ function publicPageHtml(pageContent) {
     </div>`;
 }
 
+// ---------------- Cardápio público (recurso do plano Pro) ----------------
+
+function publicMenuUrl(slug) {
+  return `${window.location.origin}${window.location.pathname}#/cardapio/${slug}`;
+}
+
+async function ensurePublicMenuLoaded(slug) {
+  state.publicMenu = { slug, loading: true, company: null, products: [], error: '' };
+  render();
+  try {
+    const company = await db.getPublicCompany(slug);
+    if (!company) {
+      state.publicMenu = { slug, loading: false, company: null, products: [], error: 'not-found' };
+      render();
+      return;
+    }
+    const products = await db.getPublicProducts(company.id);
+    state.publicMenu = { slug, loading: false, company, products, error: '' };
+  } catch (error) {
+    state.publicMenu = { slug, loading: false, company: null, products: [], error: error.message };
+  }
+  render();
+}
+
+const PUBLIC_DELIVERY_BRANDS = [
+  { key: 'ifood_url', label: 'iFood', logo: '/assets/logo-ifood.png' },
+  { key: 'link_99_url', label: '99', logo: '/assets/logo-99-food.png' },
+  { key: 'keeta_url', label: 'Keeta', logo: '/assets/logo-keeta.png' },
+];
+
+function publicMenuHeader(company) {
+  return `
+    <header class="menu-header">
+      <div class="menu-header-inner">
+        <a class="menu-brand" href="#/cardapio/${escapeHtml(company.slug)}">
+          ${company.logo_url ? `<img src="${escapeHtml(company.logo_url)}" alt="" class="menu-logo" />` : ''}
+          <span>${escapeHtml(company.company_name || 'Cardápio')}</span>
+        </a>
+      </div>
+    </header>`;
+}
+
+function publicMenuFooter(company) {
+  const links = PUBLIC_DELIVERY_BRANDS
+    .map((brand) => ({ brand, url: company[brand.key] }))
+    .filter((l) => isHttpUrl(l.url));
+  return `
+    <footer class="site-footer menu-footer">
+      <div class="site-footer-inner">
+        <span>&copy; ${new Date().getFullYear()} ${escapeHtml(company.company_name || '')}.</span>
+        ${links.length ? `<div class="delivery-shortcuts" style="margin:0;">
+          ${links.map((l) => `<a class="delivery-shortcut" href="${escapeHtml(l.url)}" target="_blank" rel="noopener noreferrer">${deliveryBadge(l.brand, 'delivery-badge-sm')}<span>${escapeHtml(l.brand.label)}</span></a>`).join('')}
+        </div>` : ''}
+        <span class="site-footer-badge">Powered by: <strong>Gravit</strong></span>
+      </div>
+    </footer>`;
+}
+
+function publicMenuHtml() {
+  const slug = state.route.param;
+  const productId = state.route.param2;
+  if (!slug || state.publicMenu.slug !== slug) {
+    return `<div class="menu-loading"><span class="loading-whisk">${icon('whisk')}</span></div>`;
+  }
+  if (state.publicMenu.loading) {
+    return `<div class="menu-loading"><span class="loading-whisk">${icon('whisk')}</span></div>`;
+  }
+  if (!state.publicMenu.company) {
+    return `<div class="menu-empty-page"><h1>Cardápio não encontrado</h1><p>Verifique se o link está correto.</p></div>`;
+  }
+  return productId
+    ? renderPublicProductPage(state.publicMenu, productId)
+    : renderPublicMenuList(state.publicMenu);
+}
+
+function renderPublicMenuList(menu) {
+  const { company, products } = menu;
+  const categories = [];
+  for (const product of products) {
+    const name = product.category?.trim() || 'Cardápio';
+    if (!categories.includes(name)) categories.push(name);
+  }
+  return `
+    <div class="menu-page">
+      ${publicMenuHeader(company)}
+      <div class="menu-body">
+        ${categories.length > 1 ? `
+          <nav class="menu-sidebar">
+            ${categories.map((cat) => `<a href="#cat-${slugify(cat)}">${escapeHtml(cat)}</a>`).join('')}
+          </nav>` : ''}
+        <div class="menu-content">
+          ${products.length === 0
+            ? '<p class="menu-empty">Nenhum produto publicado ainda.</p>'
+            : categories.map((cat) => `
+              <section class="menu-category" id="cat-${slugify(cat)}">
+                <h2>${escapeHtml(cat)}</h2>
+                ${products.filter((p) => (p.category?.trim() || 'Cardápio') === cat).map((product) => `
+                  <a class="menu-item" href="#/cardapio/${escapeHtml(company.slug)}/${product.id}">
+                    ${product.photo_url ? `<img src="${escapeHtml(product.photo_url)}" alt="" class="menu-item-photo" />` : '<span class="menu-item-photo menu-item-photo-empty"></span>'}
+                    <div class="menu-item-info">
+                      <div class="menu-item-top"><strong>${escapeHtml(product.name)}</strong><span class="menu-item-price">${formatCurrency(toNumberSafe(product.menu_price))}</span></div>
+                      ${product.description ? `<p>${escapeHtml(product.description)}</p>` : ''}
+                    </div>
+                  </a>`).join('')}
+              </section>`).join('')}
+        </div>
+      </div>
+      ${publicMenuFooter(company)}
+    </div>`;
+}
+
+function renderPublicProductPage(menu, productId) {
+  const { company, products } = menu;
+  const product = products.find((p) => p.id === productId);
+  if (!product) {
+    return `
+      <div class="menu-page">
+        ${publicMenuHeader(company)}
+        <div class="menu-empty-page"><h1>Produto não encontrado</h1><a href="#/cardapio/${escapeHtml(company.slug)}">Voltar ao cardápio</a></div>
+        ${publicMenuFooter(company)}
+      </div>`;
+  }
+  const links = PUBLIC_DELIVERY_BRANDS
+    .map((brand) => ({ brand, url: company[brand.key] }))
+    .filter((l) => isHttpUrl(l.url));
+  return `
+    <div class="menu-page">
+      ${publicMenuHeader(company)}
+      <div class="menu-product-page">
+        <a class="menu-back" href="#/cardapio/${escapeHtml(company.slug)}">${icon('arrow', 'menu-back-icon')} Voltar ao cardápio</a>
+        ${product.photo_url ? `<img src="${escapeHtml(product.photo_url)}" alt="" class="menu-product-photo" />` : ''}
+        <h1>${escapeHtml(product.name)}</h1>
+        ${product.description ? `<p class="menu-product-description">${escapeHtml(product.description)}</p>` : ''}
+        <p class="menu-product-price">${formatCurrency(toNumberSafe(product.menu_price))}</p>
+        ${links.length ? `
+          <div class="menu-product-links">
+            <p class="eyebrow">Peça pelo app</p>
+            <div class="delivery-shortcuts">
+              ${links.map((l) => `<a class="delivery-shortcut" href="${escapeHtml(l.url)}" target="_blank" rel="noopener noreferrer">${deliveryBadge(l.brand, 'delivery-badge-sm')}<span>${escapeHtml(l.brand.label)}</span></a>`).join('')}
+            </div>
+          </div>` : ''}
+      </div>
+      ${publicMenuFooter(company)}
+    </div>`;
+}
+
 function render() {
   const restore = captureFocus();
-  app.innerHTML = state.session ? shellHtml() : publicHtml();
+  // O cardápio público é sempre a mesma página, esteja o visitante logado
+  // ou não (ex.: o próprio lojista pré-visualizando o link) — por isso vem
+  // antes do shellHtml()/publicHtml() de sempre.
+  app.innerHTML = state.route.path === 'cardapio'
+    ? publicMenuHtml()
+    : (state.session ? shellHtml() : publicHtml());
   restoreFocus(restore);
   setupScrollReveal();
 }
@@ -2430,6 +2677,10 @@ async function handleSaveDetail() {
         name: ed.productName || 'Receita sem nome',
         yield_amount: Math.max(1, Math.floor(toNumberSafe(ed.yieldAmount) || 1)),
         photo_url: photoUrl,
+        category: ed.menuCategory || '',
+        description: ed.menuDescription || '',
+        menu_price: toNumberSafe(ed.menuPrice),
+        published: ed.menuPublished,
       },
       ed.ingredients.filter((i) => i.name.trim() && !i.draft),
     );
@@ -2752,6 +3003,9 @@ async function handleSaveSettings() {
 async function handleSaveCompany() {
   const draft = state.company;
   try {
+    const logoUrl = draft.logoFile
+      ? await db.uploadCompanyLogo(state.session.user.id, draft.logoFile)
+      : draft.logoUrl;
     await db.updateProfile(state.session.user.id, {
       company_name: draft.name,
       cnpj: draft.cnpj,
@@ -2765,8 +3019,12 @@ async function handleSaveCompany() {
       ifood_url: draft.ifoodUrl,
       link_99_url: draft.link99Url,
       keeta_url: draft.keetaUrl,
+      logo_url: logoUrl,
     });
-    state.companySnapshot = JSON.stringify(draft);
+    draft.logoUrl = logoUrl;
+    draft.logoFile = null;
+    draft.logoPreviewUrl = '';
+    state.companySnapshot = companySnapshotOf(draft);
     showSuccess('Dados da empresa salvos!');
     render();
   } catch (error) {
@@ -3105,6 +3363,11 @@ app.addEventListener('change', async (event) => {
     render();
     return;
   }
+  if (target.dataset.logoInput !== undefined) {
+    const file = target.files?.[0];
+    if (file) await loadCompanyLogo(file);
+    return;
+  }
   if (!target.dataset.photoInput) return;
   const file = target.files?.[0];
   if (!file) return;
@@ -3119,29 +3382,38 @@ async function loadEditorPhoto(editorKey, file) {
   render();
 }
 
+async function loadCompanyLogo(file) {
+  const compressed = await compressImageToWebp(file);
+  state.company.logoFile = compressed;
+  state.company.logoPreviewUrl = URL.createObjectURL(compressed);
+  render();
+}
+
 // Arrastar e soltar uma imagem sobre a dropzone da foto da receita (wizard
-// ou detalhe) — mesmo destino final do input de arquivo (loadEditorPhoto).
+// ou detalhe) ou do logotipo da empresa — mesmo destino final do input de
+// arquivo correspondente.
 app.addEventListener('dragover', (event) => {
-  const zone = event.target.closest?.('[data-photo-drop]');
+  const zone = event.target.closest?.('[data-photo-drop], [data-logo-drop]');
   if (!zone) return;
   event.preventDefault();
   zone.classList.add('is-dragover');
 });
 
 app.addEventListener('dragleave', (event) => {
-  const zone = event.target.closest?.('[data-photo-drop]');
+  const zone = event.target.closest?.('[data-photo-drop], [data-logo-drop]');
   if (!zone) return;
   zone.classList.remove('is-dragover');
 });
 
 app.addEventListener('drop', async (event) => {
-  const zone = event.target.closest?.('[data-photo-drop]');
+  const zone = event.target.closest?.('[data-photo-drop], [data-logo-drop]');
   if (!zone) return;
   event.preventDefault();
   zone.classList.remove('is-dragover');
   const file = event.dataTransfer?.files?.[0];
   if (!file || !file.type.startsWith('image/')) return;
-  await loadEditorPhoto(zone.dataset.photoDrop, file);
+  if (zone.dataset.logoDrop !== undefined) await loadCompanyLogo(file);
+  else await loadEditorPhoto(zone.dataset.photoDrop, file);
 });
 
 // Enquanto o usuário está compondo um caractere (acento via dead-key, IME de
@@ -3299,6 +3571,10 @@ app.addEventListener('click', (event) => {
       state.selectedProducts.clear();
       render();
       break;
+    case 'toggle-menu-published':
+      state.detail.menuPublished = !state.detail.menuPublished;
+      render();
+      break;
     case 'confirm-bulk-delete-products':
       openConfirmBulkDeleteProducts();
       break;
@@ -3403,6 +3679,17 @@ app.addEventListener('click', (event) => {
     case 'save-company':
       handleSaveCompany();
       break;
+    case 'select-menu-link':
+      el.select();
+      break;
+    case 'copy-menu-link': {
+      const input = el.closest('.menu-link-row')?.querySelector('input');
+      if (input) {
+        input.select();
+        navigator.clipboard?.writeText(input.value).then(() => showSuccess('Link copiado!'));
+      }
+      break;
+    }
     case 'delete-supplier': {
       const supplier = state.suppliers.find((s) => s.id === id);
       openConfirmDeleteSupplier(id, supplier?.name);

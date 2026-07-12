@@ -1,0 +1,286 @@
+@use '../abstracts' as *;
+
+// Cardápio público (recurso do plano Pro): página autônoma, fora da shell
+// logada — layout deliberadamente simples (header + lista vertical por
+// categoria), modelo fixo que só troca o logotipo (ver _photo-upload.scss
+// para o dropzone reaproveitado na página Empresa).
+
+.menu-page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: $bg;
+}
+
+.menu-header {
+  background: $surface;
+  border-bottom: 1px solid $border;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.menu-header-inner {
+  width: min(900px, 100%);
+  margin: 0 auto;
+  padding: 16px 24px;
+
+  @include respond-down($bp-tablet) {
+    padding: 14px 16px;
+  }
+}
+
+.menu-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: $ink-900;
+  font-family: $font-heading;
+  font-weight: $fw-black;
+  font-size: 1.1rem;
+  text-decoration: none;
+}
+
+.menu-logo {
+  width: 36px;
+  height: 36px;
+  border-radius: $radius-sm;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.menu-body {
+  width: min(900px, 100%);
+  margin: 0 auto;
+  padding: 24px;
+  display: flex;
+  gap: 32px;
+  flex: 1;
+  align-items: flex-start;
+
+  @include respond-down($bp-tablet) {
+    padding: 16px;
+    flex-direction: column;
+  }
+}
+
+.menu-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  position: sticky;
+  top: 76px;
+  flex-shrink: 0;
+  width: 180px;
+
+  a {
+    padding: 8px 12px;
+    border-radius: $radius-sm;
+    color: $ink-700;
+    font-weight: $fw-medium;
+    font-size: $fs-sm;
+    text-decoration: none;
+
+    &:hover {
+      background: $surface-tint;
+      color: $primary-600;
+    }
+  }
+
+  @include respond-down($bp-tablet) {
+    position: static;
+    flex-direction: row;
+    flex-wrap: wrap;
+    width: 100%;
+  }
+}
+
+.menu-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.menu-category {
+  margin-bottom: 32px;
+
+  h2 {
+    font-size: $fs-sm;
+    font-weight: $fw-black;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: $ink-400;
+    padding-bottom: 10px;
+    margin: 0 0 8px;
+    border-bottom: 1px solid $border;
+  }
+}
+
+.menu-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 14px 0;
+  border-bottom: 1px solid $border;
+  text-decoration: none;
+  color: inherit;
+
+  &:last-child {
+    border-bottom: 0;
+  }
+}
+
+.menu-item-photo {
+  width: 64px;
+  height: 64px;
+  border-radius: $radius-sm;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.menu-item-photo-empty {
+  background: $surface-tint;
+}
+
+.menu-item-info {
+  flex: 1;
+  min-width: 0;
+
+  p {
+    margin: 4px 0 0;
+    color: $ink-400;
+    font-size: $fs-sm;
+    line-height: $lh-body;
+  }
+}
+
+.menu-item-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+
+  strong {
+    font-weight: $fw-bold;
+    color: $ink-900;
+  }
+}
+
+.menu-item-price {
+  flex-shrink: 0;
+  font-weight: $fw-bold;
+  color: $primary-600;
+  font-size: $fs-sm;
+}
+
+.menu-loading {
+  min-height: 60vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.menu-empty {
+  color: $ink-400;
+}
+
+.menu-empty-page {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  text-align: center;
+  padding: 60px 24px;
+
+  a {
+    color: $primary-600;
+    font-weight: $fw-bold;
+  }
+}
+
+.menu-product-page {
+  width: min(640px, 100%);
+  margin: 0 auto;
+  padding: 24px;
+
+  @include respond-down($bp-tablet) {
+    padding: 16px;
+  }
+}
+
+.menu-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: $ink-700;
+  font-weight: $fw-medium;
+  font-size: $fs-sm;
+  text-decoration: none;
+  margin-bottom: 16px;
+
+  &:hover {
+    color: $primary-600;
+  }
+}
+
+// O ícone reaproveitado (arrow) aponta pra direita por padrão; aqui vira
+// "voltar" só girando 180°.
+.menu-back-icon {
+  transform: rotate(180deg);
+}
+
+.menu-product-photo {
+  width: 100%;
+  max-height: 320px;
+  object-fit: cover;
+  border-radius: $radius-md;
+  margin-bottom: 20px;
+}
+
+.menu-product-page h1 {
+  font-size: $fs-h2;
+  margin: 0 0 8px;
+}
+
+.menu-product-description {
+  color: $ink-700;
+  line-height: $lh-body;
+  margin: 0 0 16px;
+}
+
+.menu-product-price {
+  font-size: 1.3rem;
+  font-weight: $fw-black;
+  color: $primary-600;
+  margin: 0 0 24px;
+}
+
+.menu-product-links {
+  .eyebrow {
+    margin-bottom: 8px;
+  }
+}
+
+.menu-footer {
+  margin-top: 0;
+}
+
+.menu-link-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+
+  input {
+    flex: 1;
+    min-width: 200px;
+  }
+}
+
+.logo-dropzone {
+  .photo-preview {
+    object-fit: contain;
+    background: $surface-tint;
+  }
+}

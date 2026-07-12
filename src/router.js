@@ -1,10 +1,7 @@
 export function parseRoute() {
   const hash = window.location.hash.replace(/^#\/?/, '');
-  const [path, param] = hash.split('/').filter(Boolean).reduce(
-    (acc, segment, index) => (index === 0 ? [segment, acc[1]] : [acc[0], segment]),
-    ['', undefined],
-  );
-  return { path: path || 'inicio', param };
+  const [path, param, param2] = hash.split('/').filter(Boolean);
+  return { path: path || 'inicio', param, param2 };
 }
 
 export function navigate(hash) {

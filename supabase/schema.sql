@@ -22,6 +22,12 @@ create table if not exists public.profiles (
   ifood_url text,
   link_99_url text,
   keeta_url text,
+  -- Cardápio público (recurso do plano Pro): logotipo e slug único do link
+  -- (#/cardapio/:slug). O slug é gerado uma única vez no cadastro (ver
+  -- handle_new_user abaixo) e nunca regenerado depois, pra não quebrar
+  -- links já compartilhados.
+  logo_url text,
+  slug text not null unique,
   created_at timestamptz not null default now(),
   role text not null default 'user' constraint profiles_role_check check (role in ('user', 'admin')),
   approval_status text not null default 'pending'
@@ -59,8 +65,16 @@ create policy "Admin vê todos os perfis" on public.profiles for select using (p
 create or replace function public.handle_new_user()
 returns trigger language plpgsql security definer set search_path = public as $$
 begin
-  insert into public.profiles (id, full_name, company_name)
-  values (new.id, new.raw_user_meta_data ->> 'full_name', new.raw_user_meta_data ->> 'company_name');
+  insert into public.profiles (id, full_name, company_name, slug)
+  values (
+    new.id,
+    new.raw_user_meta_data ->> 'full_name',
+    new.raw_user_meta_data ->> 'company_name',
+    lower(regexp_replace(
+      coalesce(nullif(new.raw_user_meta_data ->> 'company_name', ''), split_part(new.email, '@', 1)),
+      '[^a-zA-Z0-9]+', '-', 'g'
+    )) || '-' || substr(new.id::text, 1, 6)
+  );
   return new;
 end;
 $$;
@@ -158,6 +172,12 @@ create table if not exists public.products (
   name text not null,
   yield_amount integer not null default 1,
   photo_url text,
+  -- Cardápio público (recurso do plano Pro): campos exibidos só quando
+  -- published = true e a conta é 'pro' (ver views public_* mais abaixo).
+  category text default '',
+  description text default '',
+  menu_price numeric not null default 0,
+  published boolean not null default false,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -218,6 +238,29 @@ create table if not exists public.pricing_history (
 alter table public.pricing_history enable row level security;
 create policy "Usuário gerencia o próprio histórico" on public.pricing_history for all
   using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+-- =========================================================
+-- Cardápio público (recurso do plano Pro) — views expostas ao role anon.
+-- Uma view (security_invoker = false, padrão) roda com o privilégio do
+-- dono (postgres), o que deixa ela ignorar a RLS das tabelas base mesmo
+-- assim: a restrição de linha vem do "where plan = 'pro'"/"published =
+-- true" embutido na própria view, e a restrição de coluna vem da lista
+-- explícita de colunas no select (nada sensível como CNPJ/endereço/e-mail
+-- é exposto).
+-- =========================================================
+create or replace view public.public_companies as
+  select id, company_name, logo_url, slug, ifood_url, link_99_url, keeta_url
+  from public.profiles
+  where plan = 'pro';
+
+create or replace view public.public_products as
+  select pr.id, pr.user_id, pr.name, pr.description, pr.category, pr.menu_price, pr.photo_url, pr.yield_amount
+  from public.products pr
+  join public.profiles p on p.id = pr.user_id
+  where pr.published = true and p.plan = 'pro';
+
+grant select on public.public_companies to anon;
+grant select on public.public_products to anon;
 
 -- Índices
 create index if not exists ingredients_user_id_idx on public.ingredients (user_id);
