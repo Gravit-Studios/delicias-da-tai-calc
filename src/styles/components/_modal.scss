@@ -9,7 +9,9 @@
   justify-content: center;
   padding: 20px;
   z-index: 50;
-  animation: modal-fade-in 0.15s ease;
+  // "backwards" mantém opacity:0 durante o delay em vez de mostrar o
+  // overlay cheio parado por um instante antes da animação começar.
+  animation: modal-fade-in 0.35s ease 0.05s backwards;
 }
 
 .modal-box {
@@ -20,7 +22,7 @@
   padding: 28px;
   max-height: 90vh;
   overflow-y: auto;
-  animation: modal-pop-in 0.2s ease;
+  animation: modal-pop-in 0.35s cubic-bezier(0.16, 1, 0.3, 1) 0.05s backwards;
 }
 
 // Cada re-render (digitar em um campo do modal, por exemplo) recria o DOM do
@@ -70,25 +72,48 @@
   padding: 40px 32px;
 }
 
-.success-check {
+// Cupcake (confeitaria) com um selo de check no canto — em vez de um
+// checkmark genérico, remete à receita/produto concluído.
+.success-icon {
   position: relative;
   z-index: 1;
   width: 68px;
   height: 68px;
   border-radius: 50%;
   background: $tertiary-100;
-  color: $success-500;
+  color: $secondary-600;
   display: flex;
   align-items: center;
   justify-content: center;
+  animation: success-icon-pop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) 0.15s backwards;
 
   .icon {
     width: 34px;
     height: 34px;
+  }
+}
+
+.success-icon-badge {
+  position: absolute;
+  right: -4px;
+  bottom: -4px;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: $success-500;
+  color: $white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid $surface;
+  opacity: 0;
+  transform: scale(0.5);
+  animation: success-badge-pop 0.25s ease 0.5s forwards;
+
+  .icon {
+    width: 13px;
+    height: 13px;
     stroke-width: 3;
-    stroke-dasharray: 24;
-    stroke-dashoffset: 24;
-    animation: success-check-draw 0.4s ease 0.1s forwards;
   }
 }
 
@@ -110,6 +135,12 @@
   to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
-@keyframes success-check-draw {
-  to { stroke-dashoffset: 0; }
+@keyframes success-icon-pop {
+  from { opacity: 0; transform: scale(0.7); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes success-badge-pop {
+  from { opacity: 0; transform: scale(0.5); }
+  to { opacity: 1; transform: scale(1); }
 }

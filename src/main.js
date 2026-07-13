@@ -495,7 +495,20 @@ function showSuccess(message, duration = 1800) {
 // renderizações do mesmo modal pularem a animação.
 let modalHasAnimatedIn = false;
 
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 function openModal(type, data = {}) {
+  // Se o mesmo modal já estiver aberto (ex.: duplo clique/toque no botão que
+  // abre), só atualiza os dados em vez de reabrir — reabrir reiniciava a
+  // animação de entrada, dando a impressão de que o modal "pisca"/aparece
+  // duas vezes.
+  if (state.activeModal?.type === type) {
+    state.activeModal = { ...state.activeModal, error: '', loading: false, ...data };
+    render();
+    return;
+  }
   state.activeModal = { type, error: '', loading: false, ...data };
   modalHasAnimatedIn = false;
   render();
@@ -1278,7 +1291,10 @@ function modalOverlay() {
   if (state.successModal) {
     return `<div class="modal-overlay">
       <div class="modal-box modal-success">
-        <div class="success-check">${icon('check')}</div>
+        <div class="success-icon">
+          ${icon('cupcake')}
+          <span class="success-icon-badge">${icon('check')}</span>
+        </div>
         <p>${escapeHtml(state.successModal)}</p>
       </div>
     </div>`;
@@ -2177,6 +2193,7 @@ function shellHtml() {
       </div>
       ${siteFooter()}
     </div>
+    ${cookieBar()}
     ${modalOverlay()}`;
 }
 
@@ -2407,6 +2424,8 @@ function renderPrivacidadePage() {
     'Seus dados não são vendidos nem compartilhados com terceiros para fins de marketing.',
     'Você pode atualizar suas informações pessoais, trocar sua senha ou excluir permanentemente sua conta e todos os seus dados a qualquer momento, pelo menu de perfil.',
     'Em conformidade com a LGPD, você tem direito a solicitar acesso, correção ou exclusão dos seus dados pessoais.',
+    'Cookies: o Doce Preço não usa cookies de publicidade, análise ou rastreamento de terceiros. As únicas informações guardadas no seu navegador (por localStorage, não por cookies) são o token que mantém você conectado e a sua escolha sobre o aviso de cookies exibido na primeira visita.',
+    'Você pode apagar essas informações quando quiser, limpando os dados de navegação do seu navegador — isso vai exigir que você faça login novamente e o aviso de cookies pode voltar a aparecer.',
   ]);
 }
 
@@ -2445,6 +2464,7 @@ function authHtml() {
         <div class="auth-visual-overlay"></div>
       </div>
     </div>
+    ${cookieBar()}
     ${modalOverlay()}`;
 }
 
@@ -2465,7 +2485,8 @@ function publicPageHtml(pageContent) {
       ${landingNav()}
       <div class="main-area"><div class="page">${pageContent}</div></div>
       ${siteFooter()}
-    </div>`;
+    </div>
+    ${cookieBar()}`;
 }
 
 // ---------------- Cardápio público (recurso do plano Pro) ----------------
@@ -3256,6 +3277,11 @@ async function handleConfirmDelete() {
   const modal = state.activeModal;
   if (!modal) return;
   closeModal();
+  // Pequena pausa entre o modal de confirmação fechar e o de sucesso abrir
+  // (quando o kind mostra um) — sem isso os dois apareciam colados, um pop-in
+  // em cima do outro quase instantaneamente, dando a impressão de que o
+  // modal "aparece duas vezes".
+  await sleep(200);
   if (modal.kind === 'ingredient') await handleDeleteSavedIngredient(modal.id);
   if (modal.kind === 'product') await handleDeleteDetail(modal.id);
   if (modal.kind === 'bulk-products') await handleBulkDeleteProducts();
