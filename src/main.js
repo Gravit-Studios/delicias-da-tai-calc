@@ -699,7 +699,7 @@ function renderMenuFields(editorKey, editor) {
       </label>
     </div>
     ${isCustomPrice ? `
-    <div class="input-prefix" style="margin-top:16px;max-width:220px;">
+    <div class="input-prefix" style="margin-top:16px;">
       <span class="prefix">R$</span>
       <input inputmode="decimal" placeholder="0,00" data-editor="${editorKey}" data-field="menuPrice" value="${escapeHtml(editor.menuPrice)}" />
     </div>` : ''}
