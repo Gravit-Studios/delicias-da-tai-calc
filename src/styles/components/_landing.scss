@@ -546,10 +546,6 @@
   align-items: center;
 }
 
-.landing-steps-big-stack {
-  width: 100%;
-}
-
 .landing-steps-big-row {
   display: flex;
   align-items: baseline;
@@ -611,8 +607,8 @@
   position: absolute;
   top: -60px;
   right: 0;
-  width: 220px;
-  height: calc(220px * 4 / 3);
+  width: 300px;
+  height: calc(300px * 4 / 3);
   z-index: 1;
   // O deslocamento (translateY) é 100% via JS, interpolado suavemente frame
   // a frame (ver ensureStepsPhotoLoop em main.js) — uma transition CSS aqui

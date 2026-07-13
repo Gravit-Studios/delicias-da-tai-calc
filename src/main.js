@@ -2440,13 +2440,11 @@ function fauxWindow(bodyHtml) {
 function landingStepsBigSection() {
   return `
     <section class="landing-steps-big" id="como-funciona">
-      <div class="landing-section-inner">
-        <p class="eyebrow">Como funciona</p>
-        <h2>Do ingrediente à precificação certa</h2>
-      </div>
       <div class="landing-steps-big-track" style="height: ${LANDING_STEPS_BIG.length * 90}vh">
         <div class="landing-steps-big-sticky">
           <div class="landing-section-inner landing-steps-big-stack">
+            <p class="eyebrow">Como funciona</p>
+            <h2>Do ingrediente à precificação certa</h2>
             <div class="landing-steps-big-photo">
               ${LANDING_STEPS_BIG_PHOTOS.map((photo, i) => `
                 <div class="landing-steps-big-photo-item ${i === 0 ? 'is-active' : ''}" data-step="${i}">
@@ -2994,7 +2992,7 @@ function ensureStepsPhotoLoop() {
       stepsPhotoLoopRunning = false;
       return;
     }
-    stepsPhotoCurrent += (stepsPhotoTarget - stepsPhotoCurrent) * 0.1;
+    stepsPhotoCurrent += (stepsPhotoTarget - stepsPhotoCurrent) * 0.22;
     if (Math.abs(stepsPhotoTarget - stepsPhotoCurrent) < 0.05) {
       stepsPhotoCurrent = stepsPhotoTarget;
       photo.style.transform = `translateY(${stepsPhotoCurrent.toFixed(1)}px)`;
