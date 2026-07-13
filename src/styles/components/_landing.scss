@@ -99,9 +99,13 @@
   overflow: hidden;
   margin: 24px 24px 0;
   border-radius: $radius-xl;
+  min-height: 80vh;
+  display: flex;
+  flex-direction: column;
 
   @include respond-down($bp-tablet) {
     margin: 12px 12px 0;
+    min-height: auto;
   }
 }
 
@@ -116,11 +120,12 @@
 .landing-hero-v2-inner {
   position: relative;
   z-index: 1;
+  flex: 1;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: clamp(24px, 5vw, 64px);
-  padding: clamp(56px, 9vw, 100px) 0 72px;
+  padding: 40px 0;
 
   @include respond-down($bp-tablet) {
     flex-direction: column;
@@ -534,7 +539,11 @@
 
 .landing-steps-big-stack {
   position: sticky;
-  top: calc(#{$navbar-height} + 24px);
+  // Centralizado verticalmente no espaço visível abaixo do navbar (em vez de
+  // colado no topo), pra não sobrar um vão em branco embaixo enquanto a
+  // pista rola por baixo.
+  top: calc($navbar-height / 2 + 50vh);
+  transform: translateY(-50%);
   margin-top: 20px;
   padding-bottom: 40px;
 }
