@@ -107,38 +107,38 @@
 }
 
 .menu-category {
-  margin-bottom: 32px;
+  padding-top: 24px;
+  margin-bottom: 8px;
+  border-top: 2px solid $ink-900;
+
+  &:first-child {
+    border-top: 0;
+    padding-top: 0;
+  }
 
   h2 {
-    font-size: $fs-sm;
+    font-size: 1rem;
     font-weight: $fw-black;
     text-transform: uppercase;
     letter-spacing: 0.04em;
-    color: $ink-400;
-    padding-bottom: 10px;
-    margin: 0 0 8px;
-    border-bottom: 1px solid $border;
+    color: $ink-900;
+    margin: 0 0 20px;
   }
 }
 
 .menu-item {
   display: flex;
   align-items: flex-start;
-  gap: 14px;
-  padding: 14px 0;
-  border-bottom: 1px solid $border;
+  gap: 16px;
+  padding: 20px 0;
   text-decoration: none;
   color: inherit;
-
-  &:last-child {
-    border-bottom: 0;
-  }
 }
 
 .menu-item-photo {
-  width: 64px;
-  height: 64px;
-  border-radius: $radius-sm;
+  width: 104px;
+  height: 104px;
+  border-radius: $radius-md;
   object-fit: cover;
   flex-shrink: 0;
 }
@@ -152,7 +152,7 @@
   min-width: 0;
 
   p {
-    margin: 4px 0 0;
+    margin: 8px 0 0;
     color: $ink-400;
     font-size: $fs-sm;
     line-height: $lh-body;
@@ -166,16 +166,19 @@
   gap: 12px;
 
   strong {
-    font-weight: $fw-bold;
+    font-family: $font-heading;
+    font-weight: $fw-black;
+    font-size: 1.05rem;
     color: $ink-900;
   }
 }
 
 .menu-item-price {
   flex-shrink: 0;
+  font-family: $font-heading;
   font-weight: $fw-bold;
-  color: $primary-600;
-  font-size: $fs-sm;
+  color: $ink-900;
+  font-size: 1rem;
 }
 
 .menu-loading {

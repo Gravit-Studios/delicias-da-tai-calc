@@ -2,20 +2,22 @@
 
 // Upload de foto de receita, reaproveitado no wizard e no detalhe: a área
 // toda (imagem/ícone + texto) é um único alvo clicável e de arrastar-soltar.
+// Sem borda/moldura própria — o painel que já envolve isso (.panel) já
+// demarca o espaço, então uma segunda caixa tracejada só sobrava como área
+// vazia à direita do conteúdo.
 .photo-dropzone {
   display: flex;
   align-items: center;
   gap: 20px;
   flex-wrap: wrap;
-  padding: 20px;
-  border: 2px dashed $border;
+  padding: 8px;
+  margin: -8px;
   border-radius: $radius-md;
   cursor: pointer;
-  transition: border-color 0.15s ease, background 0.15s ease;
+  transition: background 0.15s ease;
 
   &:hover,
   &.is-dragover {
-    border-color: $primary-500;
     background: rgba($primary-500, 0.04);
   }
 }
