@@ -472,13 +472,14 @@
 
     // Reforça display:flex — como .data-table-actions costuma ser o próprio
     // <td> (não um wrapper), a regra genérica "td { display: block }" acima
-    // tinha mais especificidade (classe + elemento) e vencia.
+    // tinha mais especificidade (classe + elemento) e vencia. Sem borda
+    // própria aqui: o traço de baixo da própria linha (tr) já separa um
+    // cartão do outro — uma segunda linha só acima dos botões duplicava o
+    // divisor e ficava com espaçamento diferente da linha real da tabela.
     .data-table-actions {
       display: flex;
       flex-direction: row;
       margin-top: 10px;
-      padding-top: 10px;
-      border-top: 1px solid $secondary-100;
 
       button,
       .item-card-link {
