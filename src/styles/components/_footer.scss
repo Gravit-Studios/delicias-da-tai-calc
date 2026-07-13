@@ -49,3 +49,24 @@
     font-weight: $fw-black;
   }
 }
+
+.site-footer-social {
+  display: flex;
+  gap: 10px;
+}
+
+.site-footer-social-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: $radius-pill;
+  background: $surface-tint;
+  color: $ink-700;
+
+  .icon {
+    width: 15px;
+    height: 15px;
+  }
+}

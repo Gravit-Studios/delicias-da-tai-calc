@@ -242,62 +242,6 @@
   gap: 10px;
 }
 
-.faux-phone {
-  width: 100%;
-  max-width: 240px;
-  margin: 0 auto;
-  background: $surface;
-  border: 6px solid $ink-900;
-  border-radius: 32px;
-  overflow: hidden;
-  box-shadow: $shadow-lift;
-}
-
-.faux-phone-notch {
-  height: 18px;
-  background: $ink-900;
-  border-radius: 0 0 12px 12px;
-  width: 40%;
-  margin: 0 auto;
-}
-
-.faux-phone-body {
-  padding: 14px;
-  display: grid;
-  gap: 8px;
-}
-
-.faux-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-
-  strong {
-    display: block;
-    font-size: 0.85rem;
-    color: $ink-900;
-  }
-
-  small {
-    color: $ink-400;
-    font-size: 0.75rem;
-  }
-}
-
-.faux-dot {
-  width: 28px;
-  height: 28px;
-  border-radius: $radius-sm;
-  flex-shrink: 0;
-}
-
-.faux-card-title {
-  margin: 0;
-  font-family: $font-heading;
-  font-weight: $fw-bold;
-  color: $ink-900;
-}
-
 .faux-meta {
   display: flex;
   align-items: center;
@@ -344,45 +288,6 @@
   }
 }
 
-.faux-menu-brand {
-  margin: 0 0 4px;
-  font-family: $font-heading;
-  font-weight: $fw-bold;
-  color: $ink-900;
-}
-
-.faux-menu-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-
-  strong {
-    display: block;
-    font-size: 0.85rem;
-    color: $ink-900;
-  }
-
-  p {
-    margin: 2px 0 0;
-    color: $ink-400;
-    font-size: 0.72rem;
-  }
-}
-
-.faux-menu-photo {
-  width: 44px;
-  height: 44px;
-  border-radius: $radius-md;
-  background: $surface-tint;
-  flex-shrink: 0;
-}
-
-.faux-menu-price {
-  margin: -4px 0 4px 54px;
-  font-weight: $fw-bold;
-  color: $ink-900;
-}
-
 .landing-hero-actions {
   display: flex;
   align-items: center;
@@ -427,6 +332,9 @@
 .landing-section {
   padding: clamp(48px, 7vw, 80px) 0;
   text-align: center;
+  // Sem isso, o navbar fixo (position: sticky) cobre o topo da seção ao
+  // pular direto pra cá pelo link do menu (#beneficios/#precos).
+  scroll-margin-top: $navbar-height;
 
   h2 {
     margin: 8px 0 12px;
@@ -514,176 +422,135 @@
   }
 }
 
-// "Como funciona" (scrollytelling): a faixa alta dá espaço de rolagem pros
-// 4 passos; o conteúdo interno fica grudado (sticky) enquanto isso, e a
-// aba/texto/mockup ativos trocam via JS conforme o scroll (ver
-// updateLandingScrolly em main.js) — CSS só decide o que "ativo" parece.
-.landing-scrolly-track {
-  position: relative;
-  height: 340vh;
-
-  @include respond-down($bp-tablet) {
-    height: auto;
-  }
+// Faixa de 3 destaques logo abaixo do hero — ícone + frase curta, sem
+// cartão/fundo próprio, separados por uma linha vertical fina.
+.landing-highlights {
+  border-top: 1px solid $border;
+  border-bottom: 1px solid $border;
+  padding: 20px 0;
 }
 
-.landing-scrolly-inner {
-  position: sticky;
-  top: $navbar-height;
-  min-height: calc(100vh - #{$navbar-height});
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  padding: 48px 0;
-
-  // Só o título da seção fica centralizado — o conteúdo de cada passo
-  // (abas, texto, mockup) continua alinhado à esquerda, ver .landing-scrolly-stage.
-  > .landing-section-inner > .eyebrow,
-  > .landing-section-inner > h2 {
-    text-align: center;
-  }
-
-  @include respond-down($bp-tablet) {
-    position: static;
-    min-height: 0;
-  }
-}
-
-.landing-scrolly-tabs {
+.landing-highlights-inner {
   display: flex;
   justify-content: center;
-  gap: 4px;
-  margin: 40px auto 40px;
-  padding: 4px;
-  border-radius: $radius-pill;
-  background: $surface-tint;
-  width: fit-content;
-  max-width: 100%;
-  overflow-x: auto;
+  gap: 0;
 
-  // No mobile os passos viram lista simples (ver .landing-scrolly-mockup) —
-  // sem abas pra trocar nada, então o pill ficaria vazio (só um pontinho).
   @include respond-down($bp-tablet) {
-    display: none;
+    flex-direction: column;
+    gap: 16px;
   }
 }
 
-.landing-scrolly-tab {
-  display: inline-flex;
+.landing-highlight {
+  display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 10px 18px;
-  border-radius: $radius-pill;
-  background: none;
-  color: $ink-400;
+  gap: 10px;
+  padding: 0 40px;
+  color: $ink-700;
   font-weight: $fw-bold;
-  font-size: 0.85rem;
-  white-space: nowrap;
-  transition: background 0.2s ease, color 0.2s ease;
+  font-size: 0.92rem;
 
-  .icon {
-    width: 16px;
-    height: 16px;
-  }
+  &:not(:last-child) {
+    border-right: 1px solid $border;
 
-  &:hover {
-    box-shadow: none;
-    transform: none;
-    color: $ink-700;
-  }
-
-  &.is-active {
-    background: $surface;
-    color: $ink-900;
-    box-shadow: $shadow-sm;
-  }
-
-  @include respond-down($bp-tablet) {
-    display: none;
-  }
-}
-
-.landing-scrolly-stage {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 56px;
-  align-items: center;
-  text-align: left;
-
-  @include respond-down($bp-tablet) {
-    grid-template-columns: 1fr;
-    gap: 32px;
-  }
-}
-
-// No desktop, texto e mockup de todos os passos ficam empilhados na mesma
-// célula de grid (se sobrepõem) — só o passo ativo aparece, com um
-// fade+leve deslocamento na troca (bem mais evidente que um corte seco de
-// display:none/block). O grid também garante que o container já nasça do
-// tamanho do maior passo, sem pular de altura ao trocar.
-.landing-scrolly-copy,
-.landing-scrolly-mockup {
-  display: grid;
-}
-
-.landing-scrolly-copy {
-  @include respond-down($bp-tablet) {
-    display: block;
-  }
-}
-
-.landing-scrolly-copy-item,
-.landing-scrolly-mockup-item {
-  grid-area: 1 / 1;
-  opacity: 0;
-  transform: translateY(28px);
-  transition: opacity 0.5s ease, transform 0.5s ease;
-  pointer-events: none;
-
-  &.is-active {
-    opacity: 1;
-    transform: none;
-    pointer-events: auto;
-  }
-
-  @include respond-down($bp-tablet) {
-    opacity: 1;
-    transform: none;
-    pointer-events: auto;
-  }
-}
-
-// O mockup entra um pouco depois do texto (texto primeiro, imagem em
-// seguida) — reforça a leitura de sequência em vez dos dois surgirem juntos.
-.landing-scrolly-mockup-item {
-  transition-delay: 0.15s;
-}
-
-.landing-scrolly-copy-item {
-  h3 {
-    margin: 8px 0 12px;
-  }
-
-  > button {
-    margin-top: 20px;
-  }
-
-  @include respond-down($bp-tablet) {
-    padding-bottom: 32px;
-    border-bottom: 1px solid $border;
-
-    &:last-child {
-      border-bottom: 0;
-      padding-bottom: 0;
+    @include respond-down($bp-tablet) {
+      border-right: 0;
     }
   }
+
+  .icon {
+    width: 20px;
+    height: 20px;
+    color: $primary-600;
+    flex-shrink: 0;
+  }
+
+  @include respond-down($bp-tablet) {
+    justify-content: center;
+    padding: 0;
+  }
 }
 
-// No mobile, os passos viram uma lista simples (só o texto, sem o
-// mockup/tabs) — o mesmo motivo do sidebar/drawer: sem espaço de sobra pra
-// manter mockup+texto pareados fora do scroll pinado, que só existe no
-// desktop.
-.landing-scrolly-mockup {
+// "Como funciona": lista editorial com números grandes — cada linha entra
+// com fade + leve deslocamento pra cima ao rolar até ela (ver .reveal), sem
+// nenhum mecanismo de scroll pinado/troca de aba.
+.landing-steps-big {
+  position: relative;
+  scroll-margin-top: $navbar-height;
+}
+
+.landing-steps-big-stack {
+  position: relative;
+  margin-top: 40px;
+}
+
+.landing-steps-big-row {
+  display: flex;
+  align-items: baseline;
+  gap: 28px;
+  padding: 28px 0;
+  border-bottom: 1px solid $border;
+  text-align: left;
+
+  &:last-child {
+    border-bottom: 0;
+  }
+
+  @include respond-down($bp-tablet) {
+    flex-direction: column;
+    gap: 6px;
+    padding: 20px 0;
+  }
+}
+
+.landing-steps-big-num {
+  font-family: $font-heading;
+  font-weight: $fw-black;
+  font-size: clamp(2.2rem, 5vw, 3.6rem);
+  color: $secondary-300;
+  line-height: 1;
+  flex-shrink: 0;
+  width: 100px;
+
+  @include respond-down($bp-tablet) {
+    width: auto;
+  }
+}
+
+.landing-steps-big-text {
+  h3 {
+    font-family: $font-heading;
+    font-weight: $fw-black;
+    font-size: clamp(1.4rem, 3vw, 2.1rem);
+    margin: 0 0 8px;
+    color: $ink-900;
+  }
+
+  p {
+    margin: 0;
+    max-width: 56ch;
+    color: $ink-700;
+  }
+}
+
+// Foto inclinada espiando do canto — mesmo espírito da referência (imagem
+// "cortando" o bloco de texto grande), só que fora do fluxo de leitura.
+.landing-steps-big-photo {
+  position: absolute;
+  top: -30px;
+  right: 0;
+  width: 200px;
+  z-index: 1;
+
+  img {
+    width: 100%;
+    aspect-ratio: 3 / 4;
+    object-fit: cover;
+    border-radius: $radius-lg;
+    box-shadow: $shadow-lift;
+    transform: rotate(4deg);
+  }
+
   @include respond-down($bp-tablet) {
     display: none;
   }

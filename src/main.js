@@ -624,6 +624,8 @@ const ICON_PATHS = {
   bell: '<path d="M6 9a6 6 0 0 1 12 0c0 5 2 6 2 6H4s2-1 2-6Z"/><path d="M10 20a2 2 0 0 0 4 0"/>',
   arrowUpRight: '<path d="M7 17L17 7"/><path d="M8 7h9v9"/>',
   storefront: '<path d="M4 9l1.2-4.5A1 1 0 0 1 6.2 4h11.6a1 1 0 0 1 1 .75L20 9"/><path d="M4 9h16v2a2 2 0 0 1-2 2h0a2 2 0 0 1-2-2 2 2 0 0 1-2 2h0a2 2 0 0 1-2-2 2 2 0 0 1-2 2h0a2 2 0 0 1-2-2 2 2 0 0 1-2 2h0a2 2 0 0 1-2-2V9Z"/><path d="M5 13v7h14v-7"/><path d="M10 20v-4.5a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1V20"/>',
+  instagram: '<rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.2" cy="6.8" r="1" fill="currentColor" stroke="none"/>',
+  facebook: '<path d="M14 8.5h2.5V5H14c-2.2 0-4 1.8-4 4v2H8v3.5h2V21h3.5v-6.5H16l.5-3.5h-3V9c0-.5.5-.5.5-.5Z"/>',
 };
 
 function icon(name, extraClass = '') {
@@ -2271,6 +2273,8 @@ function trialBanner() {
     </div>`;
 }
 
+// Ícones de rede social sem link ainda (ver conversa) — viram <a> reais
+// assim que houver contas de verdade pra apontar.
 function siteFooter() {
   const year = new Date().getFullYear();
   return `
@@ -2281,6 +2285,10 @@ function siteFooter() {
           <button type="button" data-action="goto" data-route="termos">Termos de uso</button>
           <button type="button" data-action="goto" data-route="privacidade">Privacidade</button>
         </nav>
+        <div class="site-footer-social">
+          <span class="site-footer-social-icon" aria-label="Instagram">${icon('instagram')}</span>
+          <span class="site-footer-social-icon" aria-label="Facebook">${icon('facebook')}</span>
+        </div>
         <span class="site-footer-badge">Powered by: <strong>Gravit</strong></span>
       </div>
     </footer>`;
@@ -2297,33 +2305,24 @@ const LANDING_BENEFITS = [
   { icon: 'shield', title: 'Seus dados protegidos', text: 'Conforme a LGPD, com acesso só seu — você pode excluir tudo quando quiser.' },
 ];
 
-// Seção "Como funciona" (scrollytelling): cada passo tem uma aba, um texto
-// e um mockup fake próprio — ver landingScrollySection/landingScrollyMockup
-// e updateLandingScrolly (troca de passo pelo scroll, sem depender de render()).
-const LANDING_SCROLLY_STEPS = [
+// Seção "Como funciona": lista editorial de passos com números grandes
+// (ver landingStepsBigSection) — a vitrine fica de fora de propósito, é
+// recurso exclusivo do plano Pro, não faz parte do fluxo básico de todo mundo.
+const LANDING_STEPS_BIG = [
   {
-    tab: 'Ingredientes', icon: 'box', eyebrow: 'Passo 1',
-    title: 'Cadastre ingredientes e despesas',
+    num: '01',
+    label: 'Cadastre ingredientes e despesas',
     text: 'Preço de compra, quantidade e as despesas fixas do seu negócio — uma vez só, tudo num lugar.',
-    mockup: 'ingredientes',
   },
   {
-    tab: 'Receitas', icon: 'whisk', eyebrow: 'Passo 2',
-    title: 'Monte suas receitas',
+    num: '02',
+    label: 'Monte suas receitas',
     text: 'Adicione os ingredientes usados e a quantidade de cada um — o custo de cada receita sai sozinho.',
-    mockup: 'receitas',
   },
   {
-    tab: 'Precificação', icon: 'trending', eyebrow: 'Passo 3',
-    title: 'Veja o preço sugerido',
+    num: '03',
+    label: 'Veja o preço sugerido',
     text: 'Com a margem de lucro que você escolher — mínima, média ou máxima — calculada na hora, sem planilha.',
-    mockup: 'precificacao',
-  },
-  {
-    tab: 'Vitrine', icon: 'storefront', eyebrow: 'Passo 4',
-    title: 'Publique sua vitrine online',
-    text: 'Marque as receitas prontas pra vender e compartilhe um link com a lista bonita dos seus doces.',
-    mockup: 'vitrine',
   },
 ];
 
@@ -2387,75 +2386,27 @@ function fauxWindow(bodyHtml) {
     </div>`;
 }
 
-function fauxPhone(bodyHtml) {
+// "Como funciona": lista editorial com números grandes (estilo textos
+// grandes sobrepostos de referência) — sem interação de scroll, só uma
+// foto de destaque flutuando no canto.
+function landingStepsBigSection() {
   return `
-    <div class="faux-phone">
-      <div class="faux-phone-notch"></div>
-      <div class="faux-phone-body">${bodyHtml}</div>
-    </div>`;
-}
-
-const LANDING_SCROLLY_MOCKUPS = {
-  ingredientes: () => fauxWindow(`
-    <div class="faux-row"><span class="faux-dot" style="background:#e8c07d"></span><div><strong>Açúcar mascavo</strong><small>1000g · R$ 11,44</small></div></div>
-    <div class="faux-row"><span class="faux-dot" style="background:#8a5a3a"></span><div><strong>Chocolate 70%</strong><small>500g · R$ 24,90</small></div></div>
-    <div class="faux-row"><span class="faux-dot" style="background:#e9d7a8"></span><div><strong>Manteiga</strong><small>200g · R$ 9,80</small></div></div>
-    <div class="faux-row"><span class="faux-dot" style="background:#c8795b"></span><div><strong>Leite condensado</strong><small>395g · R$ 6,20</small></div></div>`),
-  receitas: () => fauxWindow(`
-    <p class="faux-card-title">Brownie de colher</p>
-    <div class="faux-meta"><span>Rendimento</span><strong>12 un.</strong></div>
-    <div class="faux-meta"><span>Ingredientes usados</span><strong>8</strong></div>
-    <div class="faux-meta"><span>Custo total da receita</span><strong>R$ 25,20</strong></div>`),
-  precificacao: () => fauxWindow(`
-    <div class="faux-meta faux-meta-highlight"><span>Custo por unidade</span><strong>R$ 2,10</strong></div>
-    <p class="faux-card-title" style="margin-top:14px">Preços sugeridos</p>
-    <div class="faux-tier"><span>Mínimo</span><strong>R$ 4,90</strong></div>
-    <div class="faux-tier is-active"><span>Média</span><strong>R$ 6,90</strong></div>
-    <div class="faux-tier"><span>Máximo</span><strong>R$ 8,90</strong></div>`),
-  vitrine: () => fauxPhone(`
-    <p class="faux-menu-brand">Doce Ponto</p>
-    <div class="faux-menu-item"><span class="faux-menu-photo"></span><div><strong>Brownie de colher</strong><p>Chocolate 70%, nozes e brigadeiro</p></div></div>
-    <p class="faux-menu-price">R$ 6,90</p>
-    <div class="faux-menu-item"><span class="faux-menu-photo"></span><div><strong>Cookie recheado</strong><p>Gotas de chocolate ao leite</p></div></div>
-    <p class="faux-menu-price">R$ 5,50</p>`),
-};
-
-// "Como funciona": abas fixas + mockup trocando conforme o scroll (ver
-// updateLandingScrolly) — a faixa alta (.landing-scrolly-track) dá espaço de
-// rolagem pros 4 passos enquanto o conteúdo (.landing-scrolly-inner) fica
-// grudado na tela (position: sticky).
-function landingScrollySection() {
-  return `
-    <section class="landing-scrolly" id="como-funciona">
-      <div class="landing-scrolly-track">
-        <div class="landing-scrolly-inner">
-          <div class="landing-section-inner">
-            <p class="eyebrow">Como funciona</p>
-            <h2>Do ingrediente ao cliente, em um só lugar</h2>
-            <div class="landing-scrolly-tabs">
-              ${LANDING_SCROLLY_STEPS.map((step, i) => `
-                <button type="button" class="landing-scrolly-tab ${i === 0 ? 'is-active' : ''}" data-step="${i}" data-action="scrolly-goto" data-step-target="${i}">
-                  ${icon(step.icon)}<span>${escapeHtml(step.tab)}</span>
-                </button>`).join('')}
-            </div>
-            <div class="landing-scrolly-stage">
-              <div class="landing-scrolly-copy">
-                ${LANDING_SCROLLY_STEPS.map((step, i) => `
-                  <div class="landing-scrolly-copy-item ${i === 0 ? 'is-active' : ''}" data-step="${i}">
-                    <p class="eyebrow">${escapeHtml(step.eyebrow)}</p>
-                    <h3>${escapeHtml(step.title)}</h3>
-                    <p>${escapeHtml(step.text)}</p>
-                    <button type="button" data-action="goto" data-route="cadastro">Testar grátis por 7 dias</button>
-                  </div>`).join('')}
-              </div>
-              <div class="landing-scrolly-mockup">
-                ${LANDING_SCROLLY_STEPS.map((step, i) => `
-                  <div class="landing-scrolly-mockup-item ${i === 0 ? 'is-active' : ''}" data-step="${i}">
-                    ${LANDING_SCROLLY_MOCKUPS[step.mockup]()}
-                  </div>`).join('')}
-              </div>
-            </div>
+    <section class="landing-steps-big" id="como-funciona">
+      <div class="landing-section-inner">
+        <p class="eyebrow">Como funciona</p>
+        <h2>Do ingrediente à precificação certa</h2>
+        <div class="landing-steps-big-stack">
+          <div class="landing-steps-big-photo reveal">
+            <img src="/assets/pexels-anntarazevich-6035994.webp" alt="Confeiteira preparando uma receita" />
           </div>
+          ${LANDING_STEPS_BIG.map((step, i) => `
+            <div class="landing-steps-big-row reveal" style="--reveal-delay: ${(i * 0.1).toFixed(2)}s">
+              <span class="landing-steps-big-num">${escapeHtml(step.num)}</span>
+              <div class="landing-steps-big-text">
+                <h3>${escapeHtml(step.label)}</h3>
+                <p>${escapeHtml(step.text)}</p>
+              </div>
+            </div>`).join('')}
         </div>
       </div>
     </section>`;
@@ -2526,11 +2477,28 @@ function landingFeaturePanel() {
     </section>`;
 }
 
+const LANDING_HIGHLIGHTS = [
+  { icon: 'trending', text: 'Custo real calculado' },
+  { icon: 'whisk', text: 'Preço sugerido automático' },
+  { icon: 'shield', text: 'Seus dados protegidos' },
+];
+
+function landingHighlightsStrip() {
+  return `
+    <div class="landing-highlights">
+      <div class="landing-section-inner landing-highlights-inner">
+        ${LANDING_HIGHLIGHTS.map((h) => `
+          <div class="landing-highlight">${icon(h.icon)}<span>${escapeHtml(h.text)}</span></div>`).join('')}
+      </div>
+    </div>`;
+}
+
 function landingHtml() {
   return `
     <div class="landing">
       ${landingNav()}
       ${landingHeroV2()}
+      ${landingHighlightsStrip()}
 
       <section class="landing-section landing-section-dark" id="beneficios">
         <div class="landing-section-inner">
@@ -2550,7 +2518,7 @@ function landingHtml() {
         </div>
       </section>
 
-      ${landingScrollySection()}
+      ${landingStepsBigSection()}
 
       ${landingFeaturePanel()}
 
@@ -2920,36 +2888,7 @@ function setupScrollReveal() {
   targets.forEach((el) => {
     if (!el.classList.contains('is-visible')) scrollRevealObserver.observe(el);
   });
-  updateLandingScrolly();
 }
-
-// Seção "Como funciona" da landing: uma faixa alta (.landing-scrolly-track)
-// com o conteúdo (.landing-scrolly-inner) grudado (position: sticky) — a
-// aba/texto/mockup ativos mudam direto no DOM conforme a posição de scroll
-// dentro dessa faixa, sem passar por render() (mudaria a cada pixel rolado).
-let scrollyRaf = null;
-function updateLandingScrolly() {
-  const track = app.querySelector('.landing-scrolly-track');
-  if (!track) return;
-  const stepCount = LANDING_SCROLLY_STEPS.length;
-  const rect = track.getBoundingClientRect();
-  const total = rect.height - window.innerHeight;
-  const progress = total > 0 ? Math.min(1, Math.max(0, -rect.top / total)) : 0;
-  const stepIndex = Math.min(stepCount - 1, Math.floor(progress * stepCount));
-  if (track.dataset.activeStep === String(stepIndex)) return;
-  track.dataset.activeStep = String(stepIndex);
-  track.querySelectorAll('[data-step]').forEach((el) => {
-    el.classList.toggle('is-active', Number(el.dataset.step) === stepIndex);
-  });
-}
-
-window.addEventListener('scroll', () => {
-  if (scrollyRaf) return;
-  scrollyRaf = requestAnimationFrame(() => {
-    scrollyRaf = null;
-    updateLandingScrolly();
-  });
-}, { passive: true });
 
 // ---------------- Ações: autenticação ----------------
 
@@ -4202,19 +4141,6 @@ app.addEventListener('click', (event) => {
       state.menuLightboxUrl = null;
       render();
       break;
-    // Clique numa aba do "como funciona" (landing): rola até o trecho do
-    // scroll pinado (ver updateLandingScrolly) correspondente àquele passo,
-    // em vez de pular direto (o scroll em si já troca a aba ativa).
-    case 'scrolly-goto': {
-      const track = document.querySelector('.landing-scrolly-track');
-      if (track) {
-        const idx = Number(el.dataset.stepTarget);
-        const total = track.offsetHeight - window.innerHeight;
-        const trackTop = track.getBoundingClientRect().top + window.scrollY;
-        window.scrollTo({ top: trackTop + (total * (idx + 0.5)) / LANDING_SCROLLY_STEPS.length, behavior: 'smooth' });
-      }
-      break;
-    }
     case 'open-change-password':
       state.profileMenuOpen = false;
       openModal('change-password');
