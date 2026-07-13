@@ -167,6 +167,60 @@
   }
 }
 
+// Banner fixo no rodapé da tela convidando contas Básico/teste grátis a
+// virar Pro (ver upgradeBanner em main.js) — some pra quem já é Pro.
+.upgrade-banner {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  gap: clamp(16px, 3vw, 32px);
+  padding: 14px clamp(16px, 4vw, 32px);
+  background: $ink-900 url('/assets/bg-banner-upgrade.jpg') center/cover no-repeat;
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.18);
+
+  .eyebrow {
+    color: $secondary-300;
+  }
+
+  h3,
+  p {
+    margin: 0;
+    color: $white;
+  }
+
+  h3 {
+    font-size: 1.05rem;
+  }
+
+  p {
+    font-size: $fs-sm;
+    opacity: 0.85;
+  }
+}
+
+.upgrade-banner-content {
+  flex: 1;
+  min-width: 0;
+}
+
+@include respond-down($bp-tablet) {
+  .upgrade-banner {
+    flex-wrap: wrap;
+
+    p:not(.eyebrow) {
+      display: none;
+    }
+
+    button {
+      width: 100%;
+    }
+  }
+}
+
 .delivery-field-list {
   display: grid;
   gap: 16px;

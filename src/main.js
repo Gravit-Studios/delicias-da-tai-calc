@@ -2220,8 +2220,9 @@ function shellHtml() {
     return trialExpiredHtml(displayName);
   }
   const showTrialBanner = !isAdmin && planStatus(state.profile) === 'trial';
+  const showUpgradeBanner = !isAdmin && !isProPlan(state.profile);
   return `
-    <div class="shell">
+    <div class="shell ${showUpgradeBanner ? 'has-upgrade-banner' : ''}">
       <header class="navbar">
         <div class="navbar-inner">
           <button type="button" class="brand" data-action="goto" data-route="inicio">
@@ -2260,6 +2261,7 @@ function shellHtml() {
       </div>
       ${siteFooter()}
     </div>
+    ${showUpgradeBanner ? upgradeBanner() : ''}
     ${cookieBar()}
     ${modalOverlay()}`;
 }
@@ -2270,6 +2272,21 @@ function trialBanner() {
     <div class="trial-banner">
       <p>Teste grátis: ${days === 1 ? 'falta 1 dia' : `faltam ${days} dias`}.</p>
       <button type="button" class="ghost" data-action="request-upgrade">Fazer upgrade</button>
+    </div>`;
+}
+
+// Banner fixo no rodapé da tela pra contas Básico/teste grátis (não mostra
+// pra quem já é Pro) — convite de upgrade sempre visível, sem depender de
+// rolar até algum lugar específico da página.
+function upgradeBanner() {
+  return `
+    <div class="upgrade-banner">
+      <div class="upgrade-banner-content">
+        <p class="eyebrow">Seja Pro</p>
+        <h3>Pronto para saber o preço certo dos seus doces?</h3>
+        <p>Vitrine online, fornecedores e gestão completa da sua confeitaria.</p>
+      </div>
+      <button type="button" data-action="request-upgrade">Fazer upgrade</button>
     </div>`;
 }
 
