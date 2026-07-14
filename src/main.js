@@ -92,6 +92,7 @@ function nameFromEmail(email) {
 // o cardápio público por cima, então é sempre um superconjunto de Controle.
 const CONTROLE_ONLY_ROUTES = { fornecedores: 'Fornecedores', clientes: 'Clientes', empresa: 'Empresa' };
 const FREE_RECIPE_LIMIT = 5;
+const FREE_PROFIT_TIER_LIMIT = 1;
 
 function planStatus(profile) {
   if (profile.plan === 'trial') {
@@ -307,7 +308,7 @@ async function loadUserData() {
       db.listIngredients(userId),
       db.listProducts(userId),
       db.ensureDefaultExpenseCategories(userId),
-      db.ensureDefaultProfitTiers(userId),
+      db.ensureDefaultProfitTiers(userId, isControlePlan(state.profile) ? 3 : FREE_PROFIT_TIER_LIMIT),
       db.listSuppliers(userId),
       db.listCustomers(userId),
     ]);
@@ -2402,8 +2403,8 @@ const LANDING_PLANS = [
     description: 'Para quem está começando a organizar os preços.',
     note: 'Comece com 7 dias grátis — depois do período, R$ 19,90/mês.',
     features: [
-      'Até 5 receitas cadastradas',
-      'Ingredientes, despesas e níveis de lucro',
+      'Até 5 receitas e 1 nível de lucro',
+      'Ingredientes e despesas',
       'Cálculo automático de preço sugerido',
     ],
     highlight: false,
@@ -2416,7 +2417,7 @@ const LANDING_PLANS = [
     priceSuffix: '/mês',
     description: 'Para quem quer controlar o negócio inteiro.',
     features: [
-      'Receitas ilimitadas',
+      'Receitas ilimitadas e 3 níveis de lucro',
       'Tudo do plano Básico',
       'Gestão de fornecedores',
       'Gestão de clientes',
@@ -2431,7 +2432,7 @@ const LANDING_PLANS = [
     name: 'Vitrine',
     price: 59.9,
     priceSuffix: '/mês',
-    description: 'Para quem também quer vender direto pro cliente.',
+    description: 'Para quem quer ter seu cardápio online.',
     features: [
       'Tudo do plano Controle',
       'Vitrine online para vender seus doces',
@@ -4221,6 +4222,12 @@ app.addEventListener('click', (event) => {
       openEditExpenseModal(id);
       break;
     case 'add-tier':
+      if (!isControlePlan(state.profile) && state.profitTiers.length >= FREE_PROFIT_TIER_LIMIT) {
+        state.statusMessage = `Você atingiu o limite de ${FREE_PROFIT_TIER_LIMIT} nível de lucro do plano Básico. Faça upgrade para o Controle para cadastrar até 3 níveis.`;
+        render();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        break;
+      }
       openModal('add-tier');
       break;
     case 'open-edit-tier':

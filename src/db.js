@@ -349,10 +349,10 @@ const DEFAULT_TIERS = [
   { name: 'Máximo', multiplier: 3.5 },
 ];
 
-export async function ensureDefaultProfitTiers(userId) {
+export async function ensureDefaultProfitTiers(userId, maxTiers = DEFAULT_TIERS.length) {
   const existing = await listProfitTiers(userId);
   if (existing.length > 0) return existing;
-  const rows = DEFAULT_TIERS.map((tier, index) => ({ user_id: userId, ...tier, position: index }));
+  const rows = DEFAULT_TIERS.slice(0, maxTiers).map((tier, index) => ({ user_id: userId, ...tier, position: index }));
   const { data, error } = await supabase.from('profit_tiers').insert(rows).select();
   if (error) throw error;
   return data.sort((a, b) => a.position - b.position);
