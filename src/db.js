@@ -10,6 +10,51 @@ function toNumber(value) {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
+// ---------- Assinaturas (Mercado Pago) ----------
+
+// Cadastro novo escolhendo um plano pago (Básico após o teste, Controle ou
+// Vitrine) direto na landing page: cria a conta e já devolve o link do
+// checkout do Mercado Pago — a liberação de verdade do plano acontece no
+// webhook, depois do pagamento confirmar (ver planStatus/payment_status).
+export async function createSignupCheckout({ plan, billingCycle, email, password, fullName, companyName, captchaToken }) {
+  const response = await fetch(`${FUNCTIONS_URL}/mercadopago-checkout`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      mode: 'signup',
+      plan,
+      billingCycle,
+      email,
+      password,
+      fullName,
+      companyName,
+      captchaToken,
+      siteUrl: `${window.location.origin}${window.location.pathname}`,
+    }),
+  });
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(body.error || 'Falha ao iniciar a assinatura.');
+  return body.initPoint;
+}
+
+// Upgrade/troca de plano de uma conta já logada: cria uma assinatura nova no
+// Mercado Pago pro plano escolhido, sem mexer no acesso atual até confirmar.
+export async function createUpgradeCheckout(accessToken, { plan, billingCycle }) {
+  const response = await fetch(`${FUNCTIONS_URL}/mercadopago-checkout`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+    body: JSON.stringify({
+      mode: 'upgrade',
+      plan,
+      billingCycle,
+      siteUrl: `${window.location.origin}${window.location.pathname}`,
+    }),
+  });
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(body.error || 'Falha ao iniciar a troca de plano.');
+  return body.initPoint;
+}
+
 // ---------- Perfil ----------
 
 export async function getProfile(userId) {

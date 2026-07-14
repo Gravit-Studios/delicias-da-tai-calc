@@ -83,10 +83,13 @@ function nameFromEmail(email) {
 }
 
 // ---------------- Planos (teste grátis / básico / controle / vitrine) ------
-// Sem checkout automático ainda (Mercado Pago pendente): o teste grátis dá
-// acesso nível Básico por 7 dias; expirado sem plano pago, o acesso fica
-// bloqueado. A troca de plano é manual (banco de dados) até o checkout
-// existir — por isso o botão de upgrade só mostra uma mensagem.
+// O teste grátis do Básico não exige cartão — dá acesso nível Básico por 7
+// dias, e expirado sem plano pago o acesso fica bloqueado. Controle e
+// Vitrine (e Básico, se escolhido direto na landing page) exigem pagamento
+// confirmado antes de liberar qualquer acesso: a conta nasce com
+// payment_status = 'pending' e fica represada até o webhook do Mercado Pago
+// confirmar (ver mercadopago-checkout/mercadopago-webhook em
+// supabase/functions e paymentPendingHtml abaixo).
 // Controle e Vitrine compartilham os recursos "avançados" (fornecedores,
 // clientes, gestão da empresa, receitas ilimitadas) — Vitrine só acrescenta
 // o cardápio público por cima, então é sempre um superconjunto de Controle.
@@ -95,6 +98,7 @@ const FREE_RECIPE_LIMIT = 5;
 const FREE_PROFIT_TIER_LIMIT = 1;
 
 function planStatus(profile) {
+  if (profile.paymentStatus === 'pending') return 'payment_pending';
   if (profile.plan === 'trial') {
     return profile.trialEndsAt && new Date(profile.trialEndsAt) > new Date() ? 'trial' : 'expired';
   }
@@ -170,6 +174,12 @@ const state = {
   authError: '',
   authLoading: false,
   cookieConsent: localStorage.getItem('cookieConsent') === 'accepted',
+  // Plano escolhido na landing page antes de criar a conta (Básico após o
+  // teste, Controle ou Vitrine) — ver start-paid-signup/handleAuthSubmit.
+  // null = cadastro normal, com teste grátis do Básico.
+  pendingPurchase: null,
+  checkingPayment: false,
+  upgradeCheckoutLoading: false,
 
   route: { path: 'inicio', param: undefined },
 
@@ -296,6 +306,10 @@ async function loadUserData() {
       planBillingCycle: profile.plan_billing_cycle || null,
       planRenewsAt: profile.plan_renews_at || null,
       planAutoRenew: profile.plan_auto_renew ?? true,
+      paymentStatus: profile.payment_status || 'none',
+      pendingPlan: profile.pending_plan || null,
+      pendingBillingCycle: profile.pending_billing_cycle || null,
+      scheduledPlan: profile.scheduled_plan || null,
       createdAt: profile.created_at || null,
       lastPriceReviewAt: profile.last_price_review_at || null,
     };
@@ -484,6 +498,56 @@ async function handleTogglePlanAutoRenew() {
     await db.updateProfile(state.session.user.id, { plan_auto_renew: state.profile.planAutoRenew });
   } catch (error) {
     state.profile.planAutoRenew = previous;
+    state.statusMessage = `Erro: ${error.message}`;
+    render();
+  }
+}
+
+// Upgrade/troca de plano de uma conta já logada (trial expirado escolhendo
+// um plano, ou de dentro de Configurações) — sai do app pro checkout do
+// Mercado Pago; o acesso ao plano novo só libera quando o webhook confirmar
+// o pagamento (ver mercadopago-checkout/mercadopago-webhook).
+async function handleStartUpgradeCheckout(plan, billingCycle) {
+  state.upgradeCheckoutLoading = true;
+  state.statusMessage = '';
+  render();
+  try {
+    const accessToken = state.session.access_token;
+    const initPoint = await db.createUpgradeCheckout(accessToken, { plan, billingCycle });
+    window.location.href = initPoint;
+  } catch (error) {
+    state.upgradeCheckoutLoading = false;
+    state.statusMessage = `Erro: ${error.message}`;
+    render();
+  }
+}
+
+// "Verificar novamente" na tela de aguardando pagamento — só recarrega o
+// perfil; se o webhook já confirmou, planStatus() deixa de retornar
+// payment_pending e o app libera sozinho.
+async function handleCheckPaymentStatus() {
+  state.checkingPayment = true;
+  render();
+  await loadUserData();
+  state.checkingPayment = false;
+  if (planStatus(state.profile) === 'payment_pending') {
+    state.statusMessage = 'Ainda não recebemos a confirmação do pagamento. Tente novamente em alguns instantes.';
+  }
+  render();
+}
+
+// Downgrade (Controle→Básico ou Vitrine→Controle): não cria checkout novo —
+// só agenda a troca (ver scheduled_plan), que o webhook aplica na próxima
+// renovação, mantendo os recursos atuais até lá (ver planInfoPanel).
+async function handleScheduleDowngrade(plan) {
+  const previous = state.profile.scheduledPlan;
+  state.profile.scheduledPlan = plan;
+  render();
+  try {
+    await db.updateProfile(state.session.user.id, { scheduled_plan: plan });
+    showSuccess(plan ? `Downgrade para ${planLabelFor(plan)} agendado para a próxima renovação.` : 'Downgrade cancelado.');
+  } catch (error) {
+    state.profile.scheduledPlan = previous;
     state.statusMessage = `Erro: ${error.message}`;
     render();
   }
@@ -1852,10 +1916,11 @@ function renderClientesPage() {
     </div>`;
 }
 
-// Enquanto não existe checkout automático (Mercado Pago pendente), Básico e
-// Pro são ativados manualmente — cobrança/renovação só aparecem quando
-// alguém preenche esses campos à mão; sem eles, mostra que foi ativado
-// manualmente em vez de inventar uma data.
+// Contas antigas ajustadas manualmente antes do checkout do Mercado Pago
+// existir ainda podem estar sem cobrança/renovação preenchidas — nesse caso
+// mostra que foi ativado manualmente em vez de inventar uma data.
+const PLAN_ORDER = ['basico', 'controle', 'vitrine'];
+
 function planInfoPanel(profile) {
   const status = planStatus(profile);
   const rows = [`<div><dt>Plano atual</dt><dd>${planLabel(profile)}</dd></div>`];
@@ -1878,15 +1943,31 @@ function planInfoPanel(profile) {
     } else if (profile.planRenewsAt) {
       rows.push(`<div><dt>Renova em</dt><dd>${formatDate(profile.planRenewsAt)}</dd></div>`);
     }
+    if (profile.pendingPlan) {
+      rows.push(`<div><dt>Troca em andamento</dt><dd class="dd-muted">Aguardando confirmação do pagamento para ${escapeHtml(planLabelFor(profile.pendingPlan))}</dd></div>`);
+    }
+    if (profile.scheduledPlan) {
+      rows.push(`<div><dt>Downgrade agendado</dt><dd>Muda para ${escapeHtml(planLabelFor(profile.scheduledPlan))} na próxima renovação${profile.planRenewsAt ? ` (${formatDate(profile.planRenewsAt)})` : ''}</dd></div>`);
+    }
   }
-  const showUpgrade = status !== 'vitrine';
+
+  const currentIndex = PLAN_ORDER.indexOf(status);
+  const higherPlans = currentIndex >= 0 ? PLAN_ORDER.slice(currentIndex + 1) : PLAN_ORDER;
+  const lowerPlans = currentIndex > 0 ? PLAN_ORDER.slice(0, currentIndex) : [];
+  const hasPendingChange = Boolean(profile.pendingPlan);
+
   return `
     <div class="panel summary-panel">
       <h3>Plano</h3>
       <dl class="plan-dl">${rows.join('')}</dl>
-      ${showUpgrade ? `
+      ${higherPlans.length && !hasPendingChange ? `
         <p class="form-hint" style="margin-top:16px;">Desbloqueie receitas ilimitadas, gestão de clientes, cardápio online e mais.</p>
-        <button type="button" style="margin-top:12px;" data-action="request-upgrade">Fazer upgrade</button>` : ''}
+        <div class="action-row" style="margin-top:12px;">${higherPlans.map((p) => planCheckoutButton(p)).join('')}</div>` : ''}
+      ${lowerPlans.length && !profile.scheduledPlan && !hasPendingChange ? `
+        <p class="form-hint" style="margin-top:16px;">Prefere um plano mais simples? O downgrade só vale na próxima renovação — você continua com os recursos atuais até lá.</p>
+        <div class="action-row" style="margin-top:12px;">${lowerPlans.map((p) => `<button type="button" class="ghost" data-action="schedule-downgrade" data-plan="${p}">Mudar para ${escapeHtml(planLabelFor(p))}</button>`).join('')}</div>` : ''}
+      ${profile.scheduledPlan ? `
+        <button type="button" class="ghost" style="margin-top:12px;" data-action="cancel-scheduled-downgrade">Cancelar downgrade agendado</button>` : ''}
     </div>`;
 }
 
@@ -1981,8 +2062,15 @@ function planLabel(u) {
   if (status === 'controle') return '<span class="status-pill status-pill-active">Controle</span>';
   if (status === 'basico') return '<span class="status-pill status-pill-active">Básico</span>';
   if (status === 'expired') return '<span class="status-pill status-pill-danger">Teste expirado</span>';
+  if (status === 'payment_pending') return '<span class="status-pill status-pill-pending">Aguardando pagamento</span>';
   const days = trialDaysLeft(u);
   return `<span class="status-pill status-pill-pending">Teste (${days === 1 ? '1 dia' : `${days} dias`})</span>`;
+}
+
+// Nome de exibição de uma chave de plano solta (usado em pending_plan/
+// scheduled_plan, que não têm um profile inteiro por trás pra planLabel()).
+function planLabelFor(planKey) {
+  return LANDING_PLANS.find((p) => p.key === planKey)?.name || planKey;
 }
 
 function renderAdminUsersList(users = state.admin.users) {
@@ -2034,8 +2122,7 @@ function renderAdminPage() {
 }
 
 // Recurso exclusivo do plano Controle: em vez da página real, mostra um
-// convite pra upgrade (sem checkout ainda, então o botão só avisa que está
-// a caminho — ver "request-upgrade" no dispatch de cliques).
+// convite pra upgrade que já leva direto pro checkout do Mercado Pago.
 function renderUpgradeGate(routePath) {
   const label = CONTROLE_ONLY_ROUTES[routePath];
   return `
@@ -2044,7 +2131,7 @@ function renderUpgradeGate(routePath) {
       <h2>${escapeHtml(label)} é exclusivo do plano Controle</h2>
       <p>Faça upgrade para o plano Controle e desbloqueie ${escapeHtml(label.toLowerCase())}, receitas ilimitadas e todos os outros recursos.</p>
       ${statusBox()}
-      <button type="button" data-action="request-upgrade">Fazer upgrade</button>
+      ${planCheckoutButton('controle', 'mensal', 'Fazer upgrade')}
     </div>`;
 }
 
@@ -2071,6 +2158,7 @@ function renderPage() {
     case 'empresa': return renderEmpresaPage();
     case 'termos': return renderTermosPage();
     case 'privacidade': return renderPrivacidadePage();
+    case 'assinatura': return renderAssinaturaRetornoPage();
     default: return renderDashboard();
   }
 }
@@ -2221,7 +2309,43 @@ function trialExpiredHtml(displayName) {
             <h2>Seu teste grátis de 7 dias acabou</h2>
             <p>Para continuar usando o Doce Preço, escolha um dos nossos planos pagos.</p>
             ${statusBox()}
-            <button type="button" data-action="request-upgrade">Fazer upgrade</button>
+            <div class="action-row">
+              ${LANDING_PLANS.map((plan) => planCheckoutButton(plan.key)).join('')}
+            </div>
+          </div>
+        </div>
+      </div>
+      ${siteFooter()}
+    </div>`;
+}
+
+// Conta paga (Básico/Controle/Vitrine escolhido na landing page) esperando o
+// webhook do Mercado Pago confirmar o pagamento — ver payment_status em
+// planStatus. Pode levar alguns instantes depois de voltar do checkout.
+function paymentPendingHtml(displayName, profile) {
+  const planName = LANDING_PLANS.find((p) => p.key === profile.pendingPlan)?.name || profile.pendingPlan;
+  return `
+    <div class="shell">
+      <header class="navbar">
+        <div class="navbar-inner">
+          <button type="button" class="brand" data-action="goto" data-route="inicio">
+            <img src="/assets/logotipo/SVG/logotipo-doce-preco.svg" alt="Doce Preço" class="brand-logo" />
+          </button>
+          <div class="navbar-user">
+            <span class="navbar-email">${escapeHtml(displayName)}</span>
+            <span class="navbar-divider" aria-hidden="true"></span>
+            <button type="button" class="text-link" data-action="logout">Sair</button>
+          </div>
+        </div>
+      </header>
+      <div class="main-area">
+        <div class="page">
+          <div class="pending-approval-panel panel">
+            <p class="eyebrow">Confirmando pagamento</p>
+            <h2>Aguardando a confirmação do plano ${escapeHtml(planName || '')}</h2>
+            <p>Assim que o Mercado Pago confirmar o pagamento (pode levar alguns instantes), seu acesso libera automaticamente.</p>
+            ${statusBox()}
+            <button type="button" data-action="check-payment-status" ${state.checkingPayment ? 'disabled' : ''}>${state.checkingPayment ? 'Verificando...' : 'Verificar novamente'}</button>
           </div>
         </div>
       </div>
@@ -2286,6 +2410,13 @@ function shellHtml() {
   }
   const displayName = state.profile.fullName || nameFromEmail(state.session.user.email);
   const isAdmin = state.profile.role === 'admin';
+  // Vem antes da aprovação manual de propósito: contas que escolheram um
+  // plano pago na landing page já nascem aprovadas pelo webhook assim que o
+  // pagamento confirma (ver mercadopago-checkout) — enquanto isso, a tela de
+  // "aguardando pagamento" é mais precisa que a de "aguardando aprovação".
+  if (!isAdmin && planStatus(state.profile) === 'payment_pending') {
+    return paymentPendingHtml(displayName, state.profile);
+  }
   if (!isAdmin && state.profile.approvalStatus !== 'approved') {
     return pendingApprovalHtml(displayName);
   }
@@ -2344,7 +2475,7 @@ function trialBanner() {
   return `
     <div class="trial-banner">
       <p>Teste grátis: ${days === 1 ? 'falta 1 dia' : `faltam ${days} dias`}.</p>
-      <button type="button" class="ghost" data-action="request-upgrade">Fazer upgrade</button>
+      <button type="button" class="ghost" data-action="goto" data-route="configuracoes">Ver planos</button>
     </div>`;
 }
 
@@ -2359,7 +2490,7 @@ function upgradeBanner() {
         <h3>Pronto para saber o preço certo dos seus doces?</h3>
         <p>Vitrine online, fornecedores e gestão completa da sua confeitaria.</p>
       </div>
-      <button type="button" data-action="request-upgrade">Fazer upgrade</button>
+      <button type="button" data-action="goto" data-route="configuracoes">Ver planos</button>
     </div>`;
 }
 
@@ -2476,6 +2607,16 @@ const LANDING_PLANS = [
     cta: 'Assinar Vitrine',
   },
 ];
+
+// Botão que dispara o checkout do Mercado Pago pra uma conta já logada
+// (trial expirado escolhendo um plano, ou upgrade/troca dentro de
+// Configurações — ver start-upgrade-checkout). O cadastro novo direto da
+// landing page usa start-paid-signup em vez deste (ver LANDING_PLANS acima).
+function planCheckoutButton(planKey, billingCycle = 'mensal', label) {
+  const plan = LANDING_PLANS.find((p) => p.key === planKey);
+  const text = label || (plan ? `Assinar ${plan.name}` : 'Assinar');
+  return `<button type="button" class="ghost" data-action="start-upgrade-checkout" data-plan="${planKey}" data-cycle="${billingCycle}" ${state.upgradeCheckoutLoading ? 'disabled' : ''}>${escapeHtml(text)}</button>`;
+}
 
 function landingNav() {
   return `
@@ -2678,7 +2819,9 @@ function landingHtml() {
                 <ul class="landing-plan-features">
                   ${plan.features.map((f) => `<li>${icon('check')}<span>${escapeHtml(f)}</span></li>`).join('')}
                 </ul>
-                <button type="button" class="${plan.highlight ? '' : 'ghost'}" data-action="goto" data-route="cadastro">${escapeHtml(plan.cta)}</button>
+                <button type="button" class="${plan.highlight ? '' : 'ghost'}" ${plan.key === 'basico'
+                  ? 'data-action="goto" data-route="cadastro"'
+                  : `data-action="start-paid-signup" data-plan="${plan.key}" data-cycle="mensal"`}>${escapeHtml(plan.cta)}</button>
               </div>`).join('')}
           </div>
         </div>
@@ -2751,6 +2894,8 @@ function renderPrivacidadePage() {
 
 function authHtml() {
   const isSignUp = state.authMode === 'signup';
+  const purchase = isSignUp ? state.pendingPurchase : null;
+  const purchasePlan = purchase && LANDING_PLANS.find((p) => p.key === purchase.plan);
   return `
     <div class="auth-page">
       <div class="auth-form-side">
@@ -2758,7 +2903,9 @@ function authHtml() {
         <div class="auth-form-inner">
           <p class="eyebrow">${isSignUp ? 'Comece agora' : 'Bem-vindo de volta'}</p>
           <h1 class="auth-title">${isSignUp ? 'Crie sua conta' : 'Acesse sua conta'}</h1>
-          <p class="auth-subtitle">${isSignUp ? 'Calcule o preço ideal dos seus doces com base no custo real de ingredientes e despesas.' : 'O parceiro online da sua confeitaria.'}</p>
+          <p class="auth-subtitle">${purchasePlan
+            ? `Assinando o plano ${escapeHtml(purchasePlan.name)} (${formatCurrency(purchasePlan.price)}${purchasePlan.priceSuffix}). Depois de criar a conta você será levado ao pagamento.`
+            : isSignUp ? 'Calcule o preço ideal dos seus doces com base no custo real de ingredientes e despesas.' : 'O parceiro online da sua confeitaria.'}</p>
           <form data-form="auth">
             ${isSignUp ? '<label>Nome<input name="fullName" type="text" required /></label><label>Nome da empresa<input name="companyName" type="text" /></label>' : ''}
             <label>E-mail<input name="email" type="email" required /></label>
@@ -2771,7 +2918,7 @@ function authHtml() {
               <div class="g-recaptcha" data-sitekey="${RECAPTCHA_SITE_KEY}"></div>` : ''}
             ${state.authError ? `<p class="auth-error">${escapeHtml(state.authError)}</p>` : ''}
             <button type="submit" class="auth-submit" ${state.authLoading ? 'disabled' : ''}>
-              <span>${state.authLoading ? 'Aguarde...' : isSignUp ? 'Criar conta' : 'Entrar'}</span>${icon('arrow')}
+              <span>${state.authLoading ? 'Aguarde...' : isSignUp ? (purchasePlan ? 'Continuar para pagamento' : 'Criar conta') : 'Entrar'}</span>${icon('arrow')}
             </button>
           </form>
           <p class="auth-switch">
@@ -2797,7 +2944,26 @@ function publicHtml() {
   if (state.route.path === 'entrar' || state.route.path === 'cadastro') return authHtml();
   if (state.route.path === 'termos') return publicPageHtml(renderTermosPage());
   if (state.route.path === 'privacidade') return publicPageHtml(renderPrivacidadePage());
+  if (state.route.path === 'assinatura') return publicPageHtml(renderAssinaturaRetornoPage());
   return landingHtml();
+}
+
+// Volta do checkout do Mercado Pago (back_url = #/assinatura/retorno). Quem
+// veio de um cadastro novo (Controle/Vitrine na landing page) chega aqui
+// deslogado — a conta foi criada no servidor, sem sessão no navegador (ver
+// mercadopago-checkout), por isso pede login em vez de tentar entrar
+// sozinho. Quem veio de um upgrade dentro do app já logado continua com a
+// sessão (ver planStatus/payment_pending pra saber se já liberou).
+function renderAssinaturaRetornoPage() {
+  return `
+    <div class="panel" style="max-width:560px;margin:40px auto;text-align:center;">
+      <p class="eyebrow">Pagamento em processamento</p>
+      <h2>Recebemos sua confirmação do Mercado Pago</h2>
+      <p class="muted">Assim que o pagamento for confirmado (geralmente leva só alguns instantes), seu plano é liberado automaticamente.</p>
+      ${state.session
+        ? '<button type="button" data-action="goto" data-route="inicio">Ir para o painel</button>'
+        : '<button type="button" data-action="goto" data-route="entrar">Fazer login</button>'}
+    </div>`;
 }
 
 function publicPageHtml(pageContent) {
@@ -3135,7 +3301,24 @@ async function handleAuthSubmit(form) {
     state.authLoading = true;
     state.authError = '';
     render();
+    const purchase = state.pendingPurchase;
     try {
+      if (purchase) {
+        // Controle/Vitrine escolhidos direto na landing page: cria a conta
+        // já represada (payment_status = 'pending', ver planStatus) e manda
+        // direto pro checkout do Mercado Pago — sai do app de propósito.
+        const initPoint = await db.createSignupCheckout({
+          plan: purchase.plan,
+          billingCycle: purchase.billingCycle,
+          email,
+          password,
+          fullName,
+          companyName,
+          captchaToken,
+        });
+        window.location.href = initPoint;
+        return;
+      }
       await signUp(email, password, fullName, companyName, captchaToken);
       form.reset();
       state.authLoading = false;
@@ -4158,6 +4341,10 @@ app.addEventListener('click', (event) => {
 
   switch (action) {
     case 'goto':
+      // Navegação "normal" pro cadastro (teste grátis do Básico) — limpa um
+      // plano pago escolhido antes (ver start-paid-signup), pra não tratar
+      // um cadastro de teste grátis como se fosse uma compra pendente.
+      if (el.dataset.route === 'cadastro') state.pendingPurchase = null;
       requestNavigation(() => navigate(`#/${el.dataset.route}`));
       break;
     case 'open-produto':
@@ -4201,9 +4388,23 @@ app.addEventListener('click', (event) => {
       navigate('#/novo-produto');
       render();
       break;
-    case 'request-upgrade':
-      state.statusMessage = 'Em breve! Fale com a gente pelo suporte para migrar de plano.';
+    case 'start-paid-signup':
+      state.pendingPurchase = { plan: el.dataset.plan, billingCycle: el.dataset.cycle || 'mensal' };
+      state.authMode = 'signup';
+      navigate('#/cadastro');
       render();
+      break;
+    case 'start-upgrade-checkout':
+      handleStartUpgradeCheckout(el.dataset.plan, el.dataset.cycle || 'mensal');
+      break;
+    case 'check-payment-status':
+      handleCheckPaymentStatus();
+      break;
+    case 'schedule-downgrade':
+      handleScheduleDowngrade(el.dataset.plan);
+      break;
+    case 'cancel-scheduled-downgrade':
+      handleScheduleDowngrade(null);
       break;
     case 'toggle-plan-auto-renew':
       handleTogglePlanAutoRenew();
