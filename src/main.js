@@ -82,23 +82,31 @@ function nameFromEmail(email) {
   return prefix.replace(/[._-]+/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
-// ---------------- Planos (teste grátis / básico / pro) ----------------
+// ---------------- Planos (teste grátis / básico / controle / vitrine) ------
 // Sem checkout automático ainda (Mercado Pago pendente): o teste grátis dá
 // acesso nível Básico por 7 dias; expirado sem plano pago, o acesso fica
-// bloqueado. A troca pra 'basico'/'pro' é manual (banco de dados) até o
-// checkout existir — por isso o botão de upgrade só mostra uma mensagem.
-const PRO_ONLY_ROUTES = { fornecedores: 'Fornecedores', clientes: 'Clientes', empresa: 'Empresa' };
+// bloqueado. A troca de plano é manual (banco de dados) até o checkout
+// existir — por isso o botão de upgrade só mostra uma mensagem.
+// Controle e Vitrine compartilham os recursos "avançados" (fornecedores,
+// clientes, gestão da empresa, receitas ilimitadas) — Vitrine só acrescenta
+// o cardápio público por cima, então é sempre um superconjunto de Controle.
+const CONTROLE_ONLY_ROUTES = { fornecedores: 'Fornecedores', clientes: 'Clientes', empresa: 'Empresa' };
 const FREE_RECIPE_LIMIT = 5;
 
 function planStatus(profile) {
   if (profile.plan === 'trial') {
     return profile.trialEndsAt && new Date(profile.trialEndsAt) > new Date() ? 'trial' : 'expired';
   }
-  return profile.plan; // 'basico' | 'pro'
+  return profile.plan; // 'basico' | 'controle' | 'vitrine'
 }
 
-function isProPlan(profile) {
-  return planStatus(profile) === 'pro';
+function isControlePlan(profile) {
+  const status = planStatus(profile);
+  return status === 'controle' || status === 'vitrine';
+}
+
+function isVitrinePlan(profile) {
+  return planStatus(profile) === 'vitrine';
 }
 
 function trialDaysLeft(profile) {
@@ -107,14 +115,14 @@ function trialDaysLeft(profile) {
   return Math.max(0, Math.ceil(ms / (24 * 60 * 60 * 1000)));
 }
 
-// Recurso do plano Pro: lembrete pra revisar os preços das receitas a cada
-// 30 dias (custos de ingrediente/despesa podem ter mudado desde a última
-// vez). Conta a partir da última revisão marcada ou, se nunca marcou, da
-// criação da conta.
+// Recurso do plano Controle: lembrete pra revisar os preços das receitas a
+// cada 30 dias (custos de ingrediente/despesa podem ter mudado desde a
+// última vez). Conta a partir da última revisão marcada ou, se nunca
+// marcou, da criação da conta.
 const PRICE_REVIEW_INTERVAL_DAYS = 30;
 
 function pricesNeedReview(profile) {
-  if (!isProPlan(profile)) return false;
+  if (!isControlePlan(profile)) return false;
   const reference = profile.lastPriceReviewAt || profile.createdAt;
   if (!reference) return false;
   const days = (Date.now() - new Date(reference).getTime()) / (24 * 60 * 60 * 1000);
@@ -143,7 +151,7 @@ function defaultDetail() {
     photoUrl: '',
     photoFile: null,
     photoPreviewUrl: '',
-    // Campos do cardápio público (recurso do plano Pro) — ver renderMenuFields.
+    // Campos do cardápio público (recurso do plano Vitrine) — ver renderMenuFields.
     menuCategory: '',
     menuDescription: '',
     menuPrice: '',
@@ -739,7 +747,7 @@ function basicFields(editorKey, editor) {
   </div>`;
 }
 
-// Campos do cardápio público (recurso do plano Pro): categoria, descrição,
+// Campos do cardápio público (recurso do plano Vitrine): categoria, descrição,
 // preço de exibição e o interruptor de publicação por receita.
 function renderMenuFields(editorKey, editor) {
   const pricing = pricingFor(editor);
@@ -1507,7 +1515,7 @@ function renderProdutoDetalhe(id) {
       ${editor.errors.ingredients ? `<p class="form-error">${escapeHtml(editor.errors.ingredients)}</p>` : ''}
       ${ingredientsTable('detail', editor.ingredients, editor.errors.invalidIngredientIds || new Set())}
     </div>
-    ${isProPlan(state.profile) ? `<div class="panel">
+    ${isVitrinePlan(state.profile) ? `<div class="panel">
       <h3>Cardápio público</h3>
       ${renderMenuFields('detail', editor)}
     </div>` : ''}
@@ -1777,7 +1785,7 @@ function renderFornecedoresPage() {
     </div>`;
 }
 
-// Gestão de clientes — recurso do plano Pro (ver nota em handleRouteChange
+// Gestão de clientes — recurso do plano Controle (ver nota em handleRouteChange
 // sobre o gate por plano ainda não existir, já que a cobrança não está
 // implementada).
 function renderClientesPage() {
@@ -1836,7 +1844,7 @@ function planInfoPanel(profile) {
       rows.push(`<div><dt>${cycleLabel ? 'Renova em' : 'Vence em'}</dt><dd>${formatDate(profile.planRenewsAt)}</dd></div>`);
     }
   }
-  const showUpgrade = status !== 'pro';
+  const showUpgrade = status !== 'vitrine';
   return `
     <div class="panel summary-panel">
       <h3>Plano</h3>
@@ -1934,7 +1942,8 @@ function renderEmpresaPage() {
 // que o objeto vindo da edge function tem os mesmos campos (plan/trialEndsAt).
 function planLabel(u) {
   const status = planStatus(u);
-  if (status === 'pro') return '<span class="status-pill status-pill-active">Pro</span>';
+  if (status === 'vitrine') return '<span class="status-pill status-pill-active">Vitrine</span>';
+  if (status === 'controle') return '<span class="status-pill status-pill-active">Controle</span>';
   if (status === 'basico') return '<span class="status-pill status-pill-active">Básico</span>';
   if (status === 'expired') return '<span class="status-pill status-pill-danger">Teste expirado</span>';
   const days = trialDaysLeft(u);
@@ -1988,16 +1997,16 @@ function renderAdminPage() {
     </div>`;
 }
 
-// Recurso exclusivo do plano Pro: em vez da página real, mostra um convite
-// pra upgrade (sem checkout ainda, então o botão só avisa que está a
-// caminho — ver "request-upgrade" no dispatch de cliques).
+// Recurso exclusivo do plano Controle: em vez da página real, mostra um
+// convite pra upgrade (sem checkout ainda, então o botão só avisa que está
+// a caminho — ver "request-upgrade" no dispatch de cliques).
 function renderUpgradeGate(routePath) {
-  const label = PRO_ONLY_ROUTES[routePath];
+  const label = CONTROLE_ONLY_ROUTES[routePath];
   return `
     <div class="panel upgrade-gate">
-      <p class="eyebrow">Recurso Pro</p>
-      <h2>${escapeHtml(label)} é exclusivo do plano Pro</h2>
-      <p>Faça upgrade para o plano Pro e desbloqueie ${escapeHtml(label.toLowerCase())}, receitas ilimitadas e todos os outros recursos.</p>
+      <p class="eyebrow">Recurso Controle</p>
+      <h2>${escapeHtml(label)} é exclusivo do plano Controle</h2>
+      <p>Faça upgrade para o plano Controle e desbloqueie ${escapeHtml(label.toLowerCase())}, receitas ilimitadas e todos os outros recursos.</p>
       ${statusBox()}
       <button type="button" data-action="request-upgrade">Fazer upgrade</button>
     </div>`;
@@ -2009,7 +2018,7 @@ function renderPage() {
   if (state.profile.role === 'admin' && state.route.path !== 'termos' && state.route.path !== 'privacidade') {
     return renderAdminPage();
   }
-  if (PRO_ONLY_ROUTES[state.route.path] && !isProPlan(state.profile)) {
+  if (CONTROLE_ONLY_ROUTES[state.route.path] && !isControlePlan(state.profile)) {
     return renderUpgradeGate(state.route.path);
   }
   switch (state.route.path) {
@@ -2044,11 +2053,11 @@ const NAV_GROUPS = [
 ];
 
 // "Gestão" precisa ser montado a cada render (não é uma constante estática
-// como os outros grupos) porque o item "Site" só existe pra conta Pro e
+// como os outros grupos) porque o item "Site" só existe pra conta Vitrine e
 // aponta pro link público da própria empresa (depende do slug carregado).
 function gestaoGroup() {
   const items = [{ route: 'clientes', label: 'Clientes' }, { route: 'empresa', label: 'Empresa' }];
-  if (isProPlan(state.profile) && state.company.slug) {
+  if (isVitrinePlan(state.profile) && state.company.slug) {
     items.push({ label: 'Site', external: true, href: publicMenuUrl(state.company.slug) });
   }
   return { key: 'gestao', label: 'Gestão', items };
@@ -2248,7 +2257,7 @@ function shellHtml() {
     return trialExpiredHtml(displayName);
   }
   const showTrialBanner = !isAdmin && planStatus(state.profile) === 'trial';
-  const showUpgradeBanner = !isAdmin && !isProPlan(state.profile);
+  const showUpgradeBanner = !isAdmin && !isVitrinePlan(state.profile);
   return `
     <div class="shell ${showUpgradeBanner ? 'has-upgrade-banner' : ''}">
       <header class="navbar">
@@ -2310,7 +2319,7 @@ function upgradeBanner() {
   return `
     <div class="upgrade-banner">
       <div class="upgrade-banner-content">
-        <p class="eyebrow">Seja Pro</p>
+        <p class="eyebrow">Desbloqueie mais recursos</p>
         <h3>Pronto para saber o preço certo dos seus doces?</h3>
         <p>Vitrine online, fornecedores e gestão completa da sua confeitaria.</p>
       </div>
@@ -2352,7 +2361,7 @@ const LANDING_BENEFITS = [
 
 // Seção "Como funciona": lista editorial de passos com números grandes
 // (ver landingStepsBigSection) — a vitrine fica de fora de propósito, é
-// recurso exclusivo do plano Pro, não faz parte do fluxo básico de todo mundo.
+// recurso exclusivo do plano Vitrine, não faz parte do fluxo básico de todo mundo.
 const LANDING_STEPS_BIG = [
   {
     num: '01',
@@ -2380,43 +2389,29 @@ const LANDING_STEPS_BIG_PHOTOS = [
   { src: '/assets/pexels-amar-9329437.webp', alt: 'Doces prontos para servir' },
 ];
 
-// O teste grátis dá acesso aos recursos do plano Básico por 7 dias (ver
-// planStatus/isProPlan) — por isso vira seu próprio cartão em vez de uma
-// promessa genérica em todos os planos, e só ele usa CTA de "começar teste";
-// Básico/Pro são assinatura direta.
+// O teste grátis (7 dias) já dá acesso nível Básico (ver planStatus) — por
+// isso vira uma nota no próprio cartão do Básico em vez de um cartão à
+// parte. Controle e Vitrine são o antigo "Pro" dividido em dois: Vitrine é
+// tudo do Controle + o cardápio público (ver isControlePlan/isVitrinePlan).
 const LANDING_PLANS = [
-  {
-    key: 'trial',
-    icon: 'clock',
-    name: 'Teste grátis',
-    priceLabel: 'Grátis',
-    priceSuffix: '/7 dias',
-    description: 'Para conhecer a plataforma sem compromisso.',
-    features: [
-      'Recursos do plano Básico',
-      'Sem cartão de crédito',
-      'Cancele quando quiser',
-    ],
-    highlight: false,
-    cta: 'Começar teste grátis',
-  },
   {
     key: 'basico',
     name: 'Básico',
     price: 19.9,
     priceSuffix: '/mês',
     description: 'Para quem está começando a organizar os preços.',
+    note: 'Comece com 7 dias grátis — depois do período, R$ 19,90/mês.',
     features: [
       'Até 5 receitas cadastradas',
       'Ingredientes, despesas e níveis de lucro',
       'Cálculo automático de preço sugerido',
     ],
     highlight: false,
-    cta: 'Assinar Básico',
+    cta: 'Começar teste grátis',
   },
   {
-    key: 'pro',
-    name: 'Pro',
+    key: 'controle',
+    name: 'Controle',
     price: 39.9,
     priceSuffix: '/mês',
     description: 'Para quem quer controlar o negócio inteiro.',
@@ -2424,11 +2419,25 @@ const LANDING_PLANS = [
       'Receitas ilimitadas',
       'Tudo do plano Básico',
       'Gestão de fornecedores',
+      'Gestão de clientes',
       'Gestão da empresa (CNPJ, endereço, links de delivery)',
-      'Vitrine online para vender seus doces',
     ],
     highlight: true,
-    cta: 'Assinar Pro',
+    cta: 'Assinar Controle',
+  },
+  {
+    key: 'vitrine',
+    icon: 'storefront',
+    name: 'Vitrine',
+    price: 59.9,
+    priceSuffix: '/mês',
+    description: 'Para quem também quer vender direto pro cliente.',
+    features: [
+      'Tudo do plano Controle',
+      'Vitrine online para vender seus doces',
+    ],
+    highlight: false,
+    cta: 'Assinar Vitrine',
   },
 ];
 
@@ -2618,7 +2627,7 @@ function landingHtml() {
         <div class="landing-section-inner">
           <p class="eyebrow-pill">Planos</p>
           <h2><span class="muted-tone">Escolha o plano</span> da sua confeitaria</h2>
-          <p class="landing-section-subtitle">O teste grátis de 7 dias dá acesso aos recursos do plano Básico. Assine quando estiver pronta pra continuar.</p>
+          <p class="landing-section-subtitle">O plano Básico começa com 7 dias de teste grátis. Cancele quando quiser.</p>
           <div class="landing-pricing-grid">
             ${LANDING_PLANS.map((plan, index) => `
               <div class="landing-plan-card reveal ${plan.highlight ? 'is-highlight' : ''}" style="--reveal-delay: ${(index * 0.12).toFixed(2)}s">
@@ -2628,7 +2637,8 @@ function landingHtml() {
                   <h3>${escapeHtml(plan.name)}</h3>
                 </div>
                 <p class="landing-plan-description">${escapeHtml(plan.description)}</p>
-                <p class="landing-plan-price">${plan.price != null ? formatCurrency(plan.price) : plan.priceLabel}<span>${plan.priceSuffix}</span></p>
+                <p class="landing-plan-price">${formatCurrency(plan.price)}<span>${plan.priceSuffix}</span></p>
+                ${plan.note ? `<p class="landing-plan-note">${escapeHtml(plan.note)}</p>` : ''}
                 <ul class="landing-plan-features">
                   ${plan.features.map((f) => `<li>${icon('check')}<span>${escapeHtml(f)}</span></li>`).join('')}
                 </ul>
@@ -2764,7 +2774,7 @@ function publicPageHtml(pageContent) {
     ${cookieBar()}`;
 }
 
-// ---------------- Cardápio público (recurso do plano Pro) ----------------
+// ---------------- Cardápio público (recurso do plano Vitrine) ----------------
 
 function publicMenuUrl(slug) {
   return `${window.location.origin}${window.location.pathname}#/cardapio/${slug}`;
@@ -3801,7 +3811,7 @@ function openConfirmDeleteSupplier(id, name) {
   });
 }
 
-// ---------------- Ações: clientes (recurso do plano Pro) ----------------
+// ---------------- Ações: clientes (recurso do plano Controle) ----------------
 
 async function handleNewCustomer(form) {
   const formData = new FormData(form);
@@ -4123,8 +4133,8 @@ app.addEventListener('click', (event) => {
       openConfirmBulkDeleteProducts();
       break;
     case 'start-wizard':
-      if (!isProPlan(state.profile) && state.savedProducts.length >= FREE_RECIPE_LIMIT) {
-        state.statusMessage = `Você atingiu o limite de ${FREE_RECIPE_LIMIT} receitas do plano Básico. Faça upgrade para o Pro para cadastrar receitas ilimitadas.`;
+      if (!isControlePlan(state.profile) && state.savedProducts.length >= FREE_RECIPE_LIMIT) {
+        state.statusMessage = `Você atingiu o limite de ${FREE_RECIPE_LIMIT} receitas do plano Básico. Faça upgrade para o Controle para cadastrar receitas ilimitadas.`;
         render();
         // O aviso aparece no topo da página — sem isso, clicar em "Começar"
         // com a página rolada pra baixo (ex.: olhando a lista de receitas)

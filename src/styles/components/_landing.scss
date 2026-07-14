@@ -748,6 +748,14 @@
   }
 }
 
+// Nota sob o preço (ex.: "depois do teste grátis, custa X/mês") — só o
+// cartão do Básico usa, mas a regra fica genérica caso outro plano precise.
+.landing-plan-note {
+  margin: -12px 0 20px;
+  color: $ink-400;
+  font-size: 0.82rem;
+}
+
 .landing-plan-features {
   margin: 0;
   padding: 0;

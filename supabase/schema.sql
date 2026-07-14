@@ -22,8 +22,8 @@ create table if not exists public.profiles (
   ifood_url text,
   link_99_url text,
   keeta_url text,
-  -- Cardápio público (recurso do plano Pro): logotipo e slug único do link
-  -- (#/cardapio/:slug). O slug é gerado uma única vez no cadastro (ver
+  -- Cardápio público (recurso do plano Vitrine): logotipo e slug único do
+  -- link (#/cardapio/:slug). O slug é gerado uma única vez no cadastro (ver
   -- handle_new_user abaixo) e nunca regenerado depois, pra não quebrar
   -- links já compartilhados.
   logo_url text,
@@ -34,8 +34,11 @@ create table if not exists public.profiles (
     constraint profiles_approval_status_check check (approval_status in ('pending', 'approved', 'rejected')),
   -- Teste grátis de 7 dias com acesso de nível Básico; depois disso, sem um
   -- plano pago o acesso fica bloqueado (ver gating no client, main.js).
-  -- Sem checkout automático ainda: a troca pra 'basico'/'pro' é manual.
-  plan text not null default 'trial' constraint profiles_plan_check check (plan in ('trial', 'basico', 'pro')),
+  -- Controle e Vitrine compartilham os recursos avançados (fornecedores,
+  -- clientes, gestão da empresa, receitas ilimitadas); Vitrine acrescenta o
+  -- cardápio público por cima. Sem checkout automático ainda: a troca de
+  -- plano é manual.
+  plan text not null default 'trial' constraint profiles_plan_check check (plan in ('trial', 'basico', 'controle', 'vitrine')),
   trial_ends_at timestamptz not null default (now() + interval '7 days'),
   -- Preenchidos manualmente enquanto não há checkout automático (Mercado
   -- Pago pendente): mensal/anual e a data de renovação combinada com o
@@ -43,9 +46,9 @@ create table if not exists public.profiles (
   -- client, que mostra "ativado manualmente" quando ausentes).
   plan_billing_cycle text constraint profiles_plan_billing_cycle_check check (plan_billing_cycle in ('mensal', 'anual')),
   plan_renews_at timestamptz,
-  -- Recurso do plano Pro: aviso a cada 30 dias pra revisar os preços das
-  -- receitas (ver pricesNeedReview no client). Nulo até a primeira revisão
-  -- marcada; nesse caso o client usa created_at como referência.
+  -- Recurso do plano Controle: aviso a cada 30 dias pra revisar os preços
+  -- das receitas (ver pricesNeedReview no client). Nulo até a primeira
+  -- revisão marcada; nesse caso o client usa created_at como referência.
   last_price_review_at timestamptz
 );
 alter table public.profiles enable row level security;
@@ -157,7 +160,7 @@ create policy "Usuário gerencia os próprios fornecedores" on public.suppliers 
   using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
 -- =========================================================
--- customers — clientes do usuário (recurso do plano Pro — gestão da empresa)
+-- customers — clientes do usuário (recurso do plano Controle — gestão da empresa)
 -- =========================================================
 create table if not exists public.customers (
   id uuid primary key default gen_random_uuid(),
@@ -182,8 +185,8 @@ create table if not exists public.products (
   name text not null,
   yield_amount integer not null default 1,
   photo_url text,
-  -- Cardápio público (recurso do plano Pro): campos exibidos só quando
-  -- published = true e a conta é 'pro' (ver views public_* mais abaixo).
+  -- Cardápio público (recurso do plano Vitrine): campos exibidos só quando
+  -- published = true e a conta é 'vitrine' (ver views public_* mais abaixo).
   category text default '',
   description text default '',
   menu_price numeric not null default 0,
@@ -250,10 +253,10 @@ create policy "Usuário gerencia o próprio histórico" on public.pricing_histor
   using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
 -- =========================================================
--- Cardápio público (recurso do plano Pro) — views expostas ao role anon.
+-- Cardápio público (recurso do plano Vitrine) — views expostas ao role anon.
 -- Uma view (security_invoker = false, padrão) roda com o privilégio do
 -- dono (postgres), o que deixa ela ignorar a RLS das tabelas base mesmo
--- assim: a restrição de linha vem do "where plan = 'pro'"/"published =
+-- assim: a restrição de linha vem do "where plan = 'vitrine'"/"published =
 -- true" embutido na própria view, e a restrição de coluna vem da lista
 -- explícita de colunas no select (nada sensível como CNPJ/endereço/e-mail
 -- é exposto).
@@ -261,13 +264,13 @@ create policy "Usuário gerencia o próprio histórico" on public.pricing_histor
 create or replace view public.public_companies as
   select id, company_name, logo_url, slug, ifood_url, link_99_url, keeta_url
   from public.profiles
-  where plan = 'pro';
+  where plan = 'vitrine';
 
 create or replace view public.public_products as
   select pr.id, pr.user_id, pr.name, pr.description, pr.category, pr.menu_price, pr.photo_url, pr.yield_amount
   from public.products pr
   join public.profiles p on p.id = pr.user_id
-  where pr.published = true and p.plan = 'pro';
+  where pr.published = true and p.plan = 'vitrine';
 
 grant select on public.public_companies to anon;
 grant select on public.public_products to anon;
