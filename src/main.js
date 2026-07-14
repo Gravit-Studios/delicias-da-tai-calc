@@ -2622,7 +2622,7 @@ function landingNav() {
   return `
     <header class="navbar landing-nav">
       <div class="navbar-inner">
-        <button type="button" class="brand" data-action="goto" data-route="inicio">
+        <button type="button" class="brand" data-action="landing-home">
           <img src="/assets/logotipo/SVG/logotipo-doce-preco.svg" alt="Doce Preço" class="brand-logo" />
         </button>
         <ul class="landing-nav-links">
@@ -4346,6 +4346,15 @@ app.addEventListener('click', (event) => {
       // um cadastro de teste grátis como se fosse uma compra pendente.
       if (el.dataset.route === 'cadastro') state.pendingPurchase = null;
       requestNavigation(() => navigate(`#/${el.dataset.route}`));
+      break;
+    case 'landing-home':
+      // Clicar na logo da landing page sempre volta pro topo, mesmo se o
+      // hash já estiver em "inicio" (ex.: depois de clicar num link âncora
+      // como #precos, que não passa pelo router) — sem isso, o clique podia
+      // não fazer nada visível.
+      navigate('#/inicio');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      render();
       break;
     case 'open-produto':
       requestNavigation(() => navigate(`#/produto/${id}`));
