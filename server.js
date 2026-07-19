@@ -13,7 +13,11 @@ const contentTypes = new Map([
 
 const server = createServer(async (request, response) => {
   const url = new URL(request.url || '/', `http://${request.headers.host}`);
-  const pathname = url.pathname === '/' ? '/index.html' : decodeURIComponent(url.pathname);
+  // Espelha o rewrite de /loja/:slug do vercel.json (link público do
+  // cardápio) — sem isso, esse link só funcionaria no deploy da Vercel.
+  const pathname = url.pathname === '/' || /^\/loja\/[^/]+\/?$/.test(url.pathname)
+    ? '/index.html'
+    : decodeURIComponent(url.pathname);
   const filePath = resolve(join(root, pathname));
   const relativePath = relative(root, filePath);
 
@@ -34,5 +38,5 @@ const server = createServer(async (request, response) => {
 });
 
 server.listen(port, () => {
-  console.log(`Doce Preço disponível em http://localhost:${port}`);
+  console.log(`SweetHub disponível em http://localhost:${port}`);
 });

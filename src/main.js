@@ -1,5 +1,5 @@
 import { calculatePricing, calculateIngredientCost, formatCurrency } from './pricing.js';
-import { signUp, signIn, signOut, getSession, onAuthStateChange, changePassword, updateEmail } from './auth.js';
+import { signUp, signIn, signOut, getSession, onAuthStateChange, changePassword, updateEmail, requestPasswordReset, confirmPasswordReset } from './auth.js';
 import { parseRoute, navigate, onRouteChange } from './router.js';
 import { compressImageToWebp } from './imageCompression.js';
 import { lookupCep } from './cep.js';
@@ -175,6 +175,11 @@ const state = {
   pendingPurchase: null,
   checkingPayment: false,
   upgradeCheckoutLoading: false,
+  // true quando a sessão veio de um link de "esqueci minha senha" (ver
+  // onAuthStateChange) — troca a tela normal por passwordRecoveryHtml().
+  passwordRecovery: false,
+  passwordRecoveryLoading: false,
+  passwordRecoveryError: '',
 
   route: { path: 'inicio', param: undefined },
 
@@ -557,7 +562,11 @@ getSession().then((session) => {
   handleRouteChange(parseRoute());
 });
 
-onAuthStateChange((session) => {
+onAuthStateChange((event, session) => {
+  // O link de "esqueci minha senha" volta pro app com uma sessão válida e
+  // esse evento — em vez do dashboard normal, mostra a tela de definir nova
+  // senha (ver passwordRecoveryHtml/render()).
+  if (event === 'PASSWORD_RECOVERY') state.passwordRecovery = true;
   const hadSession = Boolean(state.session);
   state.session = session;
   if (session && !hadSession) loadUserData();
@@ -741,7 +750,7 @@ function avatarColorFor(name) {
 }
 
 function banner(title, subtitle) {
-  return `<div class="banner"><img src="/assets/background/bg-login.webp" alt="" class="banner-photo" /><div class="banner-overlay"></div><div class="banner-inner"><div class="banner-content"><p class="eyebrow">Doce Preço</p><h1>${escapeHtml(title)}</h1><p>${escapeHtml(subtitle)}</p></div></div></div>`;
+  return `<div class="banner"><img src="/assets/background/bg-login.webp" alt="" class="banner-photo" /><div class="banner-overlay"></div><div class="banner-inner"><div class="banner-content"><p class="eyebrow">SweetHub</p><h1>${escapeHtml(title)}</h1><p>${escapeHtml(subtitle)}</p></div></div></div>`;
 }
 
 // Cabeçalho padrão com foto pra cada página interna (Receitas, Ingredientes,
@@ -1164,6 +1173,29 @@ function changePasswordModal(data) {
     </div>`;
 }
 
+function forgotPasswordModal(data) {
+  if (data.successMessage) {
+    return `
+      <div class="modal-box">
+        <div class="modal-header"><h3>Esqueci minha senha</h3><button type="button" class="icon-btn ghost" data-action="close-modal">${icon('close')}</button></div>
+        <p class="auth-success">${escapeHtml(data.successMessage)}</p>
+      </div>`;
+  }
+  return `
+    <div class="modal-box">
+      <div class="modal-header"><h3>Esqueci minha senha</h3><button type="button" class="icon-btn ghost" data-action="close-modal">${icon('close')}</button></div>
+      <p>Digite seu e-mail e mandamos um link pra você definir uma nova senha.</p>
+      ${data.error ? `<p class="auth-error">${escapeHtml(data.error)}</p>` : ''}
+      <form data-form="forgot-password" class="modal-form">
+        <label>E-mail<input name="email" type="email" placeholder="seuemail@exemplo.com" required /></label>
+        <div class="save-actions">
+          <button type="submit" ${data.loading ? 'disabled' : ''}>${data.loading ? 'Enviando...' : 'Enviar link'}</button>
+          <button type="button" class="ghost" data-action="close-modal">Cancelar</button>
+        </div>
+      </form>
+    </div>`;
+}
+
 function deleteAccountModal(data) {
   return `
     <div class="modal-box">
@@ -1459,6 +1491,7 @@ function modalOverlay() {
   const content = {
     'edit-ingredient': editIngredientModal,
     'change-password': changePasswordModal,
+    'forgot-password': forgotPasswordModal,
     'delete-account': deleteAccountModal,
     'add-expense': addExpenseModal,
     'edit-expense': editExpenseModal,
@@ -1926,7 +1959,7 @@ function planInfoPanel(profile) {
     const cycleLabel = profile.planBillingCycle === 'mensal' ? 'Mensal' : profile.planBillingCycle === 'anual' ? 'Anual' : '';
     rows.push(cycleLabel
       ? `<div><dt>Cobrança</dt><dd>${cycleLabel}</dd></div>`
-      : `<div><dt>Cobrança</dt><dd class="dd-muted">Ativado manualmente pela equipe Doce Preço</dd></div>`);
+      : `<div><dt>Cobrança</dt><dd class="dd-muted">Ativado manualmente pela equipe SweetHub</dd></div>`);
     rows.push(`<div><dt>Renovação automática</dt><dd>
       <label class="consent-field consent-field-inline">
         <input type="checkbox" data-action="toggle-plan-auto-renew" ${profile.planAutoRenew ? 'checked' : ''} />
@@ -2013,7 +2046,7 @@ function renderEmpresaPage() {
       <div class="menu-link-row">
         <input type="text" readonly value="${escapeHtml(publicMenuUrl(state.company.slug))}" data-action="select-menu-link" />
         <button type="button" class="ghost" data-action="copy-menu-link">Copiar link</button>
-        <a class="ghost button-like" href="#/cardapio/${escapeHtml(state.company.slug)}" target="_blank" rel="noopener">Ver cardápio</a>
+        <a class="ghost button-like" href="${escapeHtml(publicMenuUrl(state.company.slug))}" target="_blank" rel="noopener">Ver cardápio</a>
       </div>
     </div>
     <div class="panel">
@@ -2221,7 +2254,7 @@ function mobileDrawer(displayName) {
     <div class="mobile-drawer-overlay ${state.mobileMenuOpen ? 'open' : ''}">
       <nav class="mobile-drawer">
         <div class="mobile-drawer-header">
-          <span class="brand"><img src="/assets/logotipo/SVG/logotipo-doce-preco.svg" alt="Doce Preço" class="brand-logo" /></span>
+          <span class="brand"><img src="/assets/logotipo/SVG/logotipo-doce-preco.svg" alt="SweetHub" class="brand-logo" /></span>
           <div class="mobile-drawer-header-actions">
             ${pricesNeedReview(state.profile) ? priceReviewAlertMenu() : ''}
             <button type="button" class="icon-btn ghost" data-action="toggle-mobile-menu" aria-label="Fechar menu">${icon('close')}</button>
@@ -2254,7 +2287,7 @@ function pendingApprovalHtml(displayName) {
       <header class="navbar">
         <div class="navbar-inner">
           <button type="button" class="brand" data-action="goto" data-route="inicio">
-            <img src="/assets/logotipo/SVG/logotipo-doce-preco.svg" alt="Doce Preço" class="brand-logo" />
+            <img src="/assets/logotipo/SVG/logotipo-doce-preco.svg" alt="SweetHub" class="brand-logo" />
           </button>
           <div class="navbar-user">
             <span class="navbar-email">${escapeHtml(displayName)}</span>
@@ -2268,7 +2301,7 @@ function pendingApprovalHtml(displayName) {
           <div class="pending-approval-panel panel">
             <p class="eyebrow">Cadastro recebido</p>
             <h2>Aguardando aprovação</h2>
-            <p>Sua conta foi criada com sucesso. Um administrador do Doce Preço precisa aprovar o seu acesso antes de você poder usar o app — isso costuma ser rápido.</p>
+            <p>Sua conta foi criada com sucesso. Um administrador do SweetHub precisa aprovar o seu acesso antes de você poder usar o app — isso costuma ser rápido.</p>
           </div>
         </div>
       </div>
@@ -2286,7 +2319,7 @@ function paymentPendingHtml(displayName, profile) {
       <header class="navbar">
         <div class="navbar-inner">
           <button type="button" class="brand" data-action="goto" data-route="inicio">
-            <img src="/assets/logotipo/SVG/logotipo-doce-preco.svg" alt="Doce Preço" class="brand-logo" />
+            <img src="/assets/logotipo/SVG/logotipo-doce-preco.svg" alt="SweetHub" class="brand-logo" />
           </button>
           <div class="navbar-user">
             <span class="navbar-email">${escapeHtml(displayName)}</span>
@@ -2383,7 +2416,7 @@ function shellHtml() {
       <header class="navbar">
         <div class="navbar-inner">
           <button type="button" class="brand" data-action="goto" data-route="inicio">
-            <img src="/assets/logotipo/SVG/logotipo-doce-preco.svg" alt="Doce Preço" class="brand-logo" />
+            <img src="/assets/logotipo/SVG/logotipo-doce-preco.svg" alt="SweetHub" class="brand-logo" />
           </button>
           ${isAdmin ? '' : `
           <ul class="nav-list">
@@ -2444,7 +2477,7 @@ function siteFooter() {
   return `
     <footer class="site-footer">
       <div class="site-footer-inner">
-        <span>&copy; ${year} Doce Preço. Todos os direitos reservados.</span>
+        <span>&copy; ${year} SweetHub. Todos os direitos reservados.</span>
         <nav class="site-footer-links">
           <button type="button" data-action="goto" data-route="termos">Termos de uso</button>
           <button type="button" data-action="goto" data-route="privacidade">Privacidade</button>
@@ -2566,7 +2599,7 @@ function landingNav() {
     <header class="navbar landing-nav">
       <div class="navbar-inner">
         <button type="button" class="brand" data-action="landing-home">
-          <img src="/assets/logotipo/SVG/logotipo-doce-preco.svg" alt="Doce Preço" class="brand-logo" />
+          <img src="/assets/logotipo/SVG/logotipo-doce-preco.svg" alt="SweetHub" class="brand-logo" />
         </button>
         <ul class="landing-nav-links">
           <li><a href="#beneficios">Benefícios</a></li>
@@ -2638,10 +2671,10 @@ function landingHeroV2() {
       <div class="landing-section-inner landing-hero-v2-inner">
         <div class="landing-hero-v2-copy">
           <p class="eyebrow-pill">Facilite a gestão da sua confeitaria</p>
-          <h1>Sua confeitaria no lucro certo</h1>
+          <h1>Sua confeitaria <em>no lucro certo</em></h1>
           <p class="landing-hero-v2-subtitle">Adicione ingredientes, crie receitas e saiba o quanto cobrar!</p>
           <div class="landing-hero-actions">
-            <button type="button" data-action="goto" data-route="cadastro">Testar grátis por 7 dias</button>
+            <button type="button" data-action="goto" data-route="cadastro">Começar grátis</button>
             <a href="#precos" class="landing-link-cta">Ver planos e preços</a>
           </div>
           <p class="landing-hero-note">Sem cartão de crédito para começar. Cancele quando quiser.</p>
@@ -2702,7 +2735,7 @@ function landingFeaturePanel() {
 const LANDING_HIGHLIGHTS = [
   { icon: 'trending', text: 'Custo real calculado' },
   { icon: 'whisk', text: 'Preço sugerido automático' },
-  { icon: 'shield', text: 'Seus dados protegidos' },
+  { icon: 'shield', text: 'Gestão da sua confeitaria' },
 ];
 
 function landingHighlightsStrip() {
@@ -2804,7 +2837,7 @@ function cookieBar() {
 function renderLegalPage(title, paragraphs) {
   return `
     <div class="section-header">
-      <div><p class="eyebrow">Doce Preço</p><h2>${escapeHtml(title)}</h2></div>
+      <div><p class="eyebrow">SweetHub</p><h2>${escapeHtml(title)}</h2></div>
       <button type="button" class="ghost" data-action="goto" data-route="inicio">Voltar</button>
     </div>
     <div class="panel">
@@ -2814,9 +2847,9 @@ function renderLegalPage(title, paragraphs) {
 
 function renderTermosPage() {
   return renderLegalPage('Termos de uso', [
-    'Ao usar o Doce Preço, você concorda em utilizar a ferramenta para calcular preços e organizar receitas, ingredientes e despesas do seu próprio negócio.',
+    'Ao usar o SweetHub, você concorda em utilizar a ferramenta para calcular preços e organizar receitas, ingredientes e despesas do seu próprio negócio.',
     'Oferecemos um plano Gratuito permanente, sem cartão de crédito, com limites de uso (receitas, ingredientes e outros recursos). Recursos avançados como relatórios, PDF, histórico de preços e a vitrine online exigem a contratação de um dos planos pagos (Controle ou Vitrine).',
-    'A cobrança dos planos pagos é processada por uma plataforma de pagamentos parceira (Mercado Pago). O Doce Preço não processa nem armazena os dados do seu cartão em nenhum momento — veja detalhes na Política de Privacidade.',
+    'A cobrança dos planos pagos é processada por uma plataforma de pagamentos parceira (Mercado Pago). O SweetHub não processa nem armazena os dados do seu cartão em nenhum momento — veja detalhes na Política de Privacidade.',
     'Os cálculos apresentados são estimativas baseadas nos dados informados por você; a conferência dos valores antes de aplicá-los é de responsabilidade do usuário.',
     'Não é permitido usar a plataforma para armazenar dados de terceiros sem autorização, nem tentar acessar contas ou dados de outros usuários.',
     'Podemos atualizar estes termos periodicamente; o uso contínuo do app após uma atualização representa a aceitação dos novos termos.',
@@ -2826,11 +2859,11 @@ function renderTermosPage() {
 function renderPrivacidadePage() {
   return renderLegalPage('Política de privacidade', [
     'Coletamos apenas os dados necessários para o funcionamento do app: nome, e-mail e as informações que você cadastra (receitas, ingredientes, despesas, fornecedores e clientes).',
-    'Não coletamos nem armazenamos dados de cartão de crédito ou débito. Quando você contrata um plano pago, o pagamento é processado diretamente pela plataforma parceira (Mercado Pago), que tem seus próprios controles de segurança; o Doce Preço recebe apenas a confirmação de que o pagamento foi aprovado.',
+    'Não coletamos nem armazenamos dados de cartão de crédito ou débito. Quando você contrata um plano pago, o pagamento é processado diretamente pela plataforma parceira (Mercado Pago), que tem seus próprios controles de segurança; o SweetHub recebe apenas a confirmação de que o pagamento foi aprovado.',
     'Seus dados não são vendidos nem compartilhados com terceiros para fins de marketing.',
     'Você pode atualizar suas informações pessoais, trocar sua senha ou excluir permanentemente sua conta e todos os seus dados a qualquer momento, pelo menu de perfil.',
     'Em conformidade com a LGPD, você tem direito a solicitar acesso, correção ou exclusão dos seus dados pessoais.',
-    'Cookies: o Doce Preço não usa cookies de publicidade, análise ou rastreamento de terceiros. As únicas informações guardadas no seu navegador (por localStorage, não por cookies) são o token que mantém você conectado e a sua escolha sobre o aviso de cookies exibido na primeira visita.',
+    'Cookies: o SweetHub não usa cookies de publicidade, análise ou rastreamento de terceiros. As únicas informações guardadas no seu navegador (por localStorage, não por cookies) são o token que mantém você conectado e a sua escolha sobre o aviso de cookies exibido na primeira visita.',
     'Você pode apagar essas informações quando quiser, limpando os dados de navegação do seu navegador — isso vai exigir que você faça login novamente e o aviso de cookies pode voltar a aparecer.',
   ]);
 }
@@ -2842,17 +2875,21 @@ function authHtml() {
   return `
     <div class="auth-page">
       <div class="auth-form-side">
-        <button type="button" class="auth-brand" data-action="goto" data-route="inicio"><img src="/assets/logotipo/SVG/logotipo-doce-preco.svg" alt="Doce Preço" class="brand-logo" /></button>
+        <button type="button" class="auth-brand" data-action="goto" data-route="inicio"><img src="/assets/logotipo/SVG/logotipo-doce-preco.svg" alt="SweetHub" class="brand-logo" /></button>
         <div class="auth-form-inner">
+          <div class="auth-tabs" role="tablist">
+            <button type="button" role="tab" aria-selected="${!isSignUp}" class="auth-tab ${!isSignUp ? 'is-active' : ''}" data-action="auth-tab" data-mode="signin">Entrar</button>
+            <button type="button" role="tab" aria-selected="${isSignUp}" class="auth-tab ${isSignUp ? 'is-active' : ''}" data-action="auth-tab" data-mode="signup">Criar conta</button>
+          </div>
           <p class="eyebrow">${isSignUp ? 'Comece agora' : 'Bem-vindo de volta'}</p>
           <h1 class="auth-title">${isSignUp ? 'Crie sua conta' : 'Acesse sua conta'}</h1>
           <p class="auth-subtitle">${purchasePlan
             ? `Assinando o plano ${escapeHtml(purchasePlan.name)} (${formatCurrency(purchasePlan.price)}${purchasePlan.priceSuffix}). Depois de criar a conta você será levado ao pagamento.`
-            : isSignUp ? 'Calcule o preço ideal dos seus doces com base no custo real de ingredientes e despesas.' : 'O parceiro online da sua confeitaria.'}</p>
+            : isSignUp ? 'Grátis para sempre, sem cartão de crédito.' : 'Bem-vinda de volta.'}</p>
           <form data-form="auth">
-            ${isSignUp ? '<label>Nome<input name="fullName" type="text" required /></label><label>Nome da empresa<input name="companyName" type="text" /></label>' : ''}
-            <label>E-mail<input name="email" type="email" required /></label>
-            <label>Senha<input name="password" type="password" minlength="6" required /></label>
+            ${isSignUp ? '<label>Seu nome<input name="fullName" type="text" placeholder="Maria Silva" required /></label><label>Nome da confeitaria<input name="companyName" type="text" placeholder="Ateliê da Maria" /></label>' : ''}
+            <label>E-mail<input name="email" type="email" placeholder="seuemail@exemplo.com" required /></label>
+            <label>Senha<input name="password" type="password" minlength="6" placeholder="${isSignUp ? 'Mínimo 8 caracteres' : ''}" required /></label>
             ${isSignUp ? `
               <label class="consent-field">
                 <input name="consent" type="checkbox" required />
@@ -2861,13 +2898,12 @@ function authHtml() {
               <div class="turnstile-widget" data-sitekey="${TURNSTILE_SITE_KEY}"></div>` : ''}
             ${state.authError ? `<p class="auth-error">${escapeHtml(state.authError)}</p>` : ''}
             <button type="submit" class="auth-submit" ${state.authLoading ? 'disabled' : ''}>
-              <span>${state.authLoading ? 'Aguarde...' : isSignUp ? (purchasePlan ? 'Continuar para pagamento' : 'Criar conta') : 'Entrar'}</span>${icon('arrow')}
+              <span>${state.authLoading ? 'Aguarde...' : isSignUp ? (purchasePlan ? 'Continuar para pagamento' : 'Criar conta grátis') : 'Entrar'}</span>${icon('arrow')}
             </button>
           </form>
-          <p class="auth-switch">
-            ${isSignUp ? 'Já tem conta?' : 'Não tem conta?'}
-            <button type="button" data-action="auth-tab" data-mode="${isSignUp ? 'signin' : 'signup'}">${isSignUp ? 'Entrar' : 'Criar conta'}</button>
-          </p>
+          ${isSignUp
+            ? '<p class="auth-switch">Ao continuar, você concorda com os <button type="button" data-action="goto" data-route="termos">Termos de uso</button> e <button type="button" data-action="goto" data-route="privacidade">Privacidade</button>.</p>'
+            : '<p class="auth-switch"><button type="button" data-action="open-forgot-password">Esqueci minha senha</button></p>'}
         </div>
       </div>
       <div class="auth-visual">
@@ -2877,6 +2913,58 @@ function authHtml() {
     </div>
     ${cookieBar()}
     ${modalOverlay()}`;
+}
+
+// Tela mostrada no lugar do app normal quando a sessão veio de um link de
+// "esqueci minha senha" (ver onAuthStateChange) — define a nova senha sem
+// pedir a atual, já que quem está aqui não lembra dela.
+function passwordRecoveryHtml() {
+  return `
+    <div class="auth-page">
+      <div class="auth-form-side">
+        <div class="auth-form-inner">
+          <p class="eyebrow">Nova senha</p>
+          <h1 class="auth-title">Defina uma nova senha</h1>
+          <p class="auth-subtitle">Escolha uma nova senha pra sua conta.</p>
+          <form data-form="password-recovery">
+            <label>Nova senha<input name="newPassword" type="password" minlength="6" required /></label>
+            <label>Confirmar nova senha<input name="confirmPassword" type="password" minlength="6" required /></label>
+            ${state.passwordRecoveryError ? `<p class="auth-error">${escapeHtml(state.passwordRecoveryError)}</p>` : ''}
+            <button type="submit" class="auth-submit" ${state.passwordRecoveryLoading ? 'disabled' : ''}>
+              <span>${state.passwordRecoveryLoading ? 'Salvando...' : 'Salvar nova senha'}</span>${icon('arrow')}
+            </button>
+          </form>
+        </div>
+      </div>
+      <div class="auth-visual">
+        <img src="/assets/img/pexels-anntarazevich-6036020.webp" alt="" class="auth-visual-photo" />
+        <div class="auth-visual-overlay"></div>
+      </div>
+    </div>
+    ${modalOverlay()}`;
+}
+
+async function handlePasswordRecoverySubmit(form) {
+  const formData = new FormData(form);
+  const newPassword = formData.get('newPassword');
+  const confirmPassword = formData.get('confirmPassword');
+  if (newPassword !== confirmPassword) {
+    state.passwordRecoveryError = 'A confirmação não bate com a nova senha.';
+    render();
+    return;
+  }
+  state.passwordRecoveryLoading = true;
+  state.passwordRecoveryError = '';
+  render();
+  try {
+    await confirmPasswordReset(newPassword);
+    state.passwordRecovery = false;
+    showSuccess('Senha definida com sucesso!');
+  } catch (error) {
+    state.passwordRecoveryLoading = false;
+    state.passwordRecoveryError = error.message;
+    render();
+  }
 }
 
 // Antes do login, a rota decide entre a landing page de vendas e o
@@ -2921,8 +3009,13 @@ function publicPageHtml(pageContent) {
 
 // ---------------- Cardápio público (recurso do plano Vitrine) ----------------
 
+// Link limpo (sem #/hash) pra compartilhar com o cliente final — funciona
+// graças ao rewrite de /loja/:slug em vercel.json + parseRoute() em
+// router.js. O preview interno ("Ver cardápio" em Configurações) continua
+// usando #/cardapio/:slug (ver mais abaixo), que também funciona pra quem
+// já tiver esse link salvo de antes.
 function publicMenuUrl(slug) {
-  return `${window.location.origin}${window.location.pathname}#/cardapio/${slug}`;
+  return `${window.location.origin}/loja/${slug}`;
 }
 
 async function ensurePublicMenuLoaded(slug) {
@@ -2966,7 +3059,7 @@ function publicMenuHeader(company, categories) {
   return `
     <header class="menu-header">
       <div class="menu-header-inner">
-        <a class="menu-brand" href="#/cardapio/${escapeHtml(company.slug)}">
+        <a class="menu-brand" href="${escapeHtml(publicMenuUrl(company.slug))}">
           ${company.logo_url ? `<img src="${escapeHtml(company.logo_url)}" alt="" class="menu-logo" />` : ''}
           <span>${escapeHtml(company.company_name || 'Cardápio')}</span>
         </a>
@@ -3093,9 +3186,11 @@ function render() {
   // O cardápio público é sempre a mesma página, esteja o visitante logado
   // ou não (ex.: o próprio lojista pré-visualizando o link) — por isso vem
   // antes do shellHtml()/publicHtml() de sempre.
-  app.innerHTML = state.route.path === 'cardapio'
-    ? publicMenuHtml()
-    : (state.session ? shellHtml() : publicHtml());
+  app.innerHTML = state.passwordRecovery
+    ? passwordRecoveryHtml()
+    : state.route.path === 'cardapio'
+      ? publicMenuHtml()
+      : (state.session ? shellHtml() : publicHtml());
   restoreFocus(restore);
   // O primeiro filho é sempre o wrapper principal da página (.shell/.landing/
   // .auth-page/...); os demais irmãos (modal, cookie bar, banner de upgrade)
@@ -3828,6 +3923,23 @@ async function handleChangePasswordSubmit(form) {
   }
 }
 
+async function handleForgotPasswordSubmit(form) {
+  const email = new FormData(form).get('email');
+  state.activeModal.loading = true;
+  state.activeModal.error = '';
+  render();
+  try {
+    await requestPasswordReset(email);
+    state.activeModal.loading = false;
+    state.activeModal.successMessage = 'Enviamos um link pro seu e-mail. Clique nele pra definir uma nova senha.';
+    render();
+  } catch (error) {
+    state.activeModal.loading = false;
+    state.activeModal.error = error.message;
+    render();
+  }
+}
+
 function openDeleteAccountModal() {
   openModal('delete-account');
 }
@@ -4309,6 +4421,8 @@ app.addEventListener('submit', (event) => {
   if (formType === 'edit-supplier') handleEditSupplierSubmit(event.target);
   if (formType === 'new-customer') handleNewCustomer(event.target);
   if (formType === 'edit-customer') handleEditCustomerSubmit(event.target);
+  if (formType === 'forgot-password') handleForgotPasswordSubmit(event.target);
+  if (formType === 'password-recovery') handlePasswordRecoverySubmit(event.target);
 });
 
 // Links âncora da landing page (Benefícios/Como funciona/Preços) — troca o
@@ -4625,6 +4739,9 @@ app.addEventListener('click', (event) => {
     case 'open-change-password':
       state.profileMenuOpen = false;
       openModal('change-password');
+      break;
+    case 'open-forgot-password':
+      openModal('forgot-password');
       break;
     case 'open-delete-account':
       openDeleteAccountModal();

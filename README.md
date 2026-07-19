@@ -1,4 +1,4 @@
-# Doce Preço
+# SweetHub
 
 Sistema de cálculo e precificação de produtos para confeitaria.
 

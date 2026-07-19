@@ -104,6 +104,40 @@
   }
 }
 
+// Alterna entre "Entrar"/"Criar conta" no topo do formulário (ver authHtml
+// em main.js) — substitui o antigo link de texto no rodapé do formulário.
+.auth-tabs {
+  display: flex;
+  gap: 4px;
+  width: min(420px, 100%);
+  margin: 0 auto 28px;
+  padding: 4px;
+  background: $surface-tint;
+  border-radius: $radius-lg;
+}
+
+.auth-tab {
+  flex: 1;
+  padding: 10px;
+  background: none;
+  border: 0;
+  border-radius: calc(#{$radius-lg} - 4px);
+  color: $ink-700;
+  font-weight: $fw-bold;
+  cursor: pointer;
+
+  &:hover {
+    box-shadow: none;
+    transform: none;
+  }
+
+  &.is-active {
+    background: $surface;
+    color: $ink-900;
+    box-shadow: $shadow-lift;
+  }
+}
+
 .auth-title { margin: 6px 0 10px; }
 
 .auth-subtitle { margin: 0 0 26px; }

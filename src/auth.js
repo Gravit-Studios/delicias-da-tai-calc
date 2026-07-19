@@ -28,8 +28,23 @@ export async function getSession() {
 }
 
 export function onAuthStateChange(callback) {
-  const { data } = supabase.auth.onAuthStateChange((_event, session) => callback(session));
+  const { data } = supabase.auth.onAuthStateChange((event, session) => callback(event, session));
   return data.subscription;
+}
+
+// "Esqueci minha senha": manda um e-mail com um link que abre o app já
+// autenticado num evento PASSWORD_RECOVERY (ver onAuthStateChange em
+// main.js), sem exigir a senha atual — diferente de changePassword acima.
+export async function requestPasswordReset(email) {
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: `${window.location.origin}${window.location.pathname}`,
+  });
+  if (error) throw error;
+}
+
+export async function confirmPasswordReset(newPassword) {
+  const { error } = await supabase.auth.updateUser({ password: newPassword });
+  if (error) throw error;
 }
 
 // Exige a senha atual antes de trocar (evita que uma sessão aberta em outro

@@ -3,5 +3,8 @@
   "installCommand": "npm install",
   "outputDirectory": "dist",
   "cleanUrls": true,
-  "trailingSlash": false
+  "trailingSlash": false,
+  "rewrites": [
+    { "source": "/loja/:slug", "destination": "/index.html" }
+  ]
 }

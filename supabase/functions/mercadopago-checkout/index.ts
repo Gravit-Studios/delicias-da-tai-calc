@@ -60,7 +60,7 @@ async function createPreapproval(options: {
     },
     body: JSON.stringify({
       preapproval_plan_id: options.planId,
-      reason: 'Assinatura Doce Preço',
+      reason: 'Assinatura SweetHub',
       external_reference: options.externalReference,
       payer_email: options.payerEmail,
       back_url: options.backUrl,
