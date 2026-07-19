@@ -151,6 +151,15 @@
   }
 }
 
+// Conta admin não tem o drawer lateral (navbar simplificada, só uma página) —
+// sem essa exceção, o "some no mobile" acima deixava o admin sem nenhum jeito
+// de trocar senha ou sair no celular.
+.navbar-user.navbar-user-admin {
+  @include respond-down($bp-tablet) {
+    display: flex;
+  }
+}
+
 .navbar-divider {
   width: 1px;
   height: 16px;

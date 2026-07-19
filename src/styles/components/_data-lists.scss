@@ -473,6 +473,15 @@
       }
     }
 
+    // Nome da empresa (coluna "título" do cartão, ver comentário acima) —
+    // some como subtítulo discreto acima do resto, não como um título forte
+    // disputando destaque com o nome da pessoa logo abaixo.
+    .card-subtitle {
+      color: $ink-700;
+      font-size: $fs-sm;
+      margin-bottom: 2px;
+    }
+
     // Reforça display:flex — como .data-table-actions costuma ser o próprio
     // <td> (não um wrapper), a regra genérica "td { display: block }" acima
     // tinha mais especificidade (classe + elemento) e vencia. Sem borda

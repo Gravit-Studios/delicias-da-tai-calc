@@ -2139,7 +2139,7 @@ function renderAdminUsersList(users = state.admin.users) {
         const statusLabel = pending ? 'Aguardando aprovação' : banned ? 'Suspenso' : 'Ativo';
         return `
         <tr>
-          <td>${escapeHtml(u.companyName || '—')}</td>
+          <td class="card-subtitle">${escapeHtml(u.companyName || '—')}</td>
           <td data-label="Nome">${escapeHtml(u.fullName || u.email)}</td>
           <td data-label="CNPJ">${escapeHtml(u.cnpj || '—')}</td>
           <td data-label="Status"><span class="status-pill ${statusClass}">${statusLabel}</span></td>
@@ -2452,7 +2452,7 @@ function shellHtml() {
             ${navItem('fornecedores', 'Fornecedores')}
             ${navDropdown(gestaoGroup())}
           </ul>`}
-          <div class="navbar-user">
+          <div class="navbar-user ${isAdmin ? 'navbar-user-admin' : ''}">
             ${isAdmin ? adminAlertsMenu() : ''}
             ${!isAdmin && pricesNeedReview(state.profile) ? priceReviewAlertMenu() : ''}
             <div class="profile-menu">
