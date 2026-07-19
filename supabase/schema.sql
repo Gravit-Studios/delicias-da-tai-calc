@@ -5,7 +5,9 @@
 create extension if not exists "pgcrypto";
 -- unaccent: usado na geração do slug do cardápio público (handle_new_user),
 -- pra transliterar "í", "ç", "ã" etc. em vez de tratá-los como pontuação.
-create extension if not exists "unaccent";
+-- Fica no schema "extensions" (não "public") por recomendação do próprio
+-- linter de segurança do Supabase.
+create extension if not exists "unaccent" with schema extensions;
 
 -- =========================================================
 -- profiles — criado automaticamente no cadastro
@@ -102,14 +104,19 @@ as $$
   );
 $$;
 
-create policy "Admin vê todos os perfis" on public.profiles for select using (public.is_admin());
+-- "to authenticated": sem essa restrição, a policy passa a valer também
+-- pro anon (que nunca tem auth.uid()), o que obriga qualquer query de anon
+-- em profiles a precisar de EXECUTE em is_admin() só pra avaliar a policy —
+-- quebra o cardápio público (ver views public_* mais abaixo) assim que
+-- is_admin() deixa de ser executável por anon.
+create policy "Admin vê todos os perfis" on public.profiles for select to authenticated using (public.is_admin());
 
 -- O primeiro super admin é promovido manualmente, uma única vez, depois de
 -- criar a conta pelo cadastro normal do site:
 --   update public.profiles set role = 'admin' where id = '<uuid do usuário>';
 
 create or replace function public.handle_new_user()
-returns trigger language plpgsql security definer set search_path = public as $$
+returns trigger language plpgsql security definer set search_path = public, extensions as $$
 declare
   base_slug text;
   candidate_slug text;
@@ -118,7 +125,7 @@ begin
   -- "delicias-da-tai"); cai pro sufixo do id apenas se já existir outra
   -- empresa com o mesmo slug (nomes iguais/muito parecidos).
   base_slug := trim(both '-' from lower(regexp_replace(
-    public.unaccent(coalesce(nullif(new.raw_user_meta_data ->> 'company_name', ''), split_part(new.email, '@', 1))),
+    extensions.unaccent(coalesce(nullif(new.raw_user_meta_data ->> 'company_name', ''), split_part(new.email, '@', 1))),
     '[^a-zA-Z0-9]+', '-', 'g'
   )));
   candidate_slug := base_slug;
@@ -301,19 +308,20 @@ create policy "Usuário gerencia o próprio histórico" on public.pricing_histor
 
 -- =========================================================
 -- Cardápio público (recurso do plano Vitrine) — views expostas ao role anon.
--- Uma view (security_invoker = false, padrão) roda com o privilégio do
--- dono (postgres), o que deixa ela ignorar a RLS das tabelas base mesmo
--- assim: a restrição de linha vem do "where plan = 'vitrine'"/"published =
--- true" embutido na própria view, e a restrição de coluna vem da lista
--- explícita de colunas no select (nada sensível como CNPJ/endereço/e-mail
--- é exposto).
+-- security_invoker = true: a view roda com o papel de quem consulta (anon),
+-- então depende de fato da RLS abaixo em vez de só confiar no "where" da
+-- própria view (que por si só rodaria com privilégio do dono/postgres,
+-- ignorando RLS por completo — achado do linter de segurança do Supabase).
+-- Coluna exposta é restrita via GRANT SELECT (col, col, ...), não select *.
 -- =========================================================
-create or replace view public.public_companies as
+create or replace view public.public_companies
+  with (security_invoker = true) as
   select id, company_name, logo_url, slug, ifood_url, link_99_url, keeta_url
   from public.profiles
   where plan = 'vitrine';
 
-create or replace view public.public_products as
+create or replace view public.public_products
+  with (security_invoker = true) as
   select pr.id, pr.user_id, pr.name, pr.description, pr.category, pr.menu_price, pr.photo_url, pr.yield_amount
   from public.products pr
   join public.profiles p on p.id = pr.user_id
@@ -321,6 +329,25 @@ create or replace view public.public_products as
 
 grant select on public.public_companies to anon;
 grant select on public.public_products to anon;
+
+-- RLS explícita pro anon nas tabelas base (necessária por causa do
+-- security_invoker acima) + grant só nas colunas que as views já expunham.
+create policy "Anon vê perfis do plano vitrine (cardápio público)" on public.profiles
+  for select to anon
+  using (plan = 'vitrine');
+
+create policy "Anon vê produtos publicados de contas vitrine (cardápio público)" on public.products
+  for select to anon
+  using (
+    published = true
+    and exists (
+      select 1 from public.profiles p
+      where p.id = products.user_id and p.plan = 'vitrine'
+    )
+  );
+
+grant select (id, company_name, logo_url, slug, ifood_url, link_99_url, keeta_url) on public.profiles to anon;
+grant select (id, user_id, name, description, category, menu_price, photo_url, yield_amount) on public.products to anon;
 
 -- =========================================================
 -- Limites do plano Gratuito (ver src/planLimits.js) aplicados no banco —
@@ -447,17 +474,25 @@ for each row execute function public.enforce_controle_only();
 -- Essas funções só devem rodar como trigger, nunca chamadas direto via
 -- RPC — a invocação de trigger não depende dessa grant (testado: os
 -- triggers continuam funcionando depois do revoke), então isso só fecha a
--- porta de RPC direto sem quebrar nada. is_admin() fica de fora de
--- propósito: apesar de também aparecer no advisor de segurança, a policy
--- "Admin vê todos os perfis" chama is_admin() para QUALQUER select
--- autenticado em profiles (não só admins), então revogar essa grant
--- quebraria a leitura do próprio perfil para todo mundo.
-revoke execute on function public.handle_new_user() from anon, authenticated;
-revoke execute on function public.enforce_recipe_limit() from anon, authenticated;
-revoke execute on function public.enforce_photo_limit() from anon, authenticated;
-revoke execute on function public.enforce_ingredient_limit() from anon, authenticated;
-revoke execute on function public.enforce_category_limit() from anon, authenticated;
-revoke execute on function public.enforce_controle_only() from anon, authenticated;
+-- porta de RPC direto sem quebrar nada. Revoga de "public" também (não só
+-- anon/authenticated): toda função nova ganha EXECUTE de PUBLIC por padrão
+-- na criação, e esse grant vale pra qualquer role independente de revokes
+-- pontuais em anon/authenticated — foi por isso que o Advisor continuou
+-- acusando essas funções como chamáveis via RPC mesmo depois do revoke
+-- anterior (que só cobria anon/authenticated, nunca public).
+revoke execute on function public.handle_new_user() from public, anon, authenticated;
+revoke execute on function public.enforce_recipe_limit() from public, anon, authenticated;
+revoke execute on function public.enforce_photo_limit() from public, anon, authenticated;
+revoke execute on function public.enforce_ingredient_limit() from public, anon, authenticated;
+revoke execute on function public.enforce_category_limit() from public, anon, authenticated;
+revoke execute on function public.enforce_controle_only() from public, anon, authenticated;
+
+-- is_admin() continua executável só por "authenticated": a policy "Admin vê
+-- todos os perfis" chama is_admin() para QUALQUER select autenticado em
+-- profiles (não só admins), então revogar dali quebraria a leitura do
+-- próprio perfil para todo mundo. Mas "anon" (não autenticado) não precisa.
+revoke execute on function public.is_admin() from public, anon;
+grant execute on function public.is_admin() to authenticated;
 
 -- Índices
 create index if not exists ingredients_user_id_idx on public.ingredients (user_id);
