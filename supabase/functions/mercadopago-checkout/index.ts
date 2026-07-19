@@ -1,6 +1,7 @@
 // Edge Function: cria uma assinatura (preapproval) no Mercado Pago pros
-// planos pagos (Básico após o teste, Controle, Vitrine) e devolve o
-// init_point (URL do checkout) pro client redirecionar o navegador.
+// planos pagos (Controle, Vitrine) e devolve o init_point (URL do checkout)
+// pro client redirecionar o navegador. O plano Gratuito nunca passa por
+// aqui — não exige pagamento (ver planLimits.js/planStatus).
 //
 // Dois modos:
 //   - signup   (público)      → cria a conta no Supabase (mesmo signUp() do
@@ -10,11 +11,11 @@
 //                                Usado quando alguém escolhe Controle/Vitrine
 //                                direto na landing page, sem conta ainda.
 //   - upgrade  (autenticado)  → cria uma assinatura nova pra uma conta que já
-//                                existe (trial→Básico, Básico→Controle,
-//                                Controle→Vitrine etc.), sem bloquear o
-//                                acesso atual enquanto o pagamento não
-//                                confirma — pending_plan/pending_billing_cycle
-//                                guardam o que vai valer quando confirmar.
+//                                existe (Gratuito→Controle, Controle→Vitrine
+//                                etc.), sem bloquear o acesso atual enquanto
+//                                o pagamento não confirma — pending_plan/
+//                                pending_billing_cycle guardam o que vai
+//                                valer quando confirmar.
 //
 // O ID do plano no Mercado Pago (preapproval_plan_id) vem de secrets no
 // formato MERCADOPAGO_PLAN_<PLANO>_<CICLO>, ex.: MERCADOPAGO_PLAN_CONTROLE_MENSAL.
@@ -85,7 +86,7 @@ Deno.serve(async (req) => {
   const mode = String(payload.mode || '');
   const plan = String(payload.plan || '');
   const billingCycle = String(payload.billingCycle || '');
-  if (!['basico', 'controle', 'vitrine'].includes(plan)) {
+  if (!['controle', 'vitrine'].includes(plan)) {
     return json({ error: 'Plano inválido.' }, 400);
   }
   if (!['mensal', 'anual'].includes(billingCycle)) {
@@ -125,8 +126,8 @@ Deno.serve(async (req) => {
     if (!userId) return json({ error: 'Não foi possível criar a conta.' }, 500);
 
     // Represa o acesso (ver payment_status em planStatus, main.js) até o
-    // webhook confirmar o pagamento — sem isso a conta ganharia os 7 dias de
-    // teste grátis do plano Básico mesmo escolhendo um plano pago.
+    // webhook confirmar o pagamento — sem isso a conta ganharia acesso ao
+    // plano Gratuito mesmo escolhendo um plano pago.
     const { error: updateError } = await admin
       .from('profiles')
       .update({ payment_status: 'pending', pending_plan: plan, pending_billing_cycle: billingCycle })

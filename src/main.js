@@ -4,6 +4,7 @@ import { parseRoute, navigate, onRouteChange } from './router.js';
 import { compressImageToWebp } from './imageCompression.js';
 import { lookupCep } from './cep.js';
 import * as db from './db.js';
+import { limitFor, canUse } from './planLimits.js';
 
 // Verificação de captcha no cadastro (evita contas automatizadas em massa) —
 // a validação de verdade acontece no lado do Supabase (Authentication >
@@ -84,27 +85,25 @@ function nameFromEmail(email) {
   return prefix.replace(/[._-]+/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
-// ---------------- Planos (teste grátis / básico / controle / vitrine) ------
-// O teste grátis do Básico não exige cartão — dá acesso nível Básico por 7
-// dias, e expirado sem plano pago o acesso fica bloqueado. Controle e
-// Vitrine (e Básico, se escolhido direto na landing page) exigem pagamento
-// confirmado antes de liberar qualquer acesso: a conta nasce com
-// payment_status = 'pending' e fica represada até o webhook do Mercado Pago
-// confirmar (ver mercadopago-checkout/mercadopago-webhook em
-// supabase/functions e paymentPendingHtml abaixo).
+// ---------------- Planos (gratuito / controle / vitrine) ------
+// Gratuito é permanente (sem prazo, sem cartão) — os limites de uso vêm de
+// planLimits.js (nº de receitas/ingredientes etc.), não de uma data de
+// expiração. Controle e Vitrine exigem pagamento confirmado antes de liberar
+// qualquer acesso: a conta nasce com payment_status = 'pending' e fica
+// represada até o webhook do Mercado Pago confirmar (ver
+// mercadopago-checkout/mercadopago-webhook em supabase/functions e
+// paymentPendingHtml abaixo).
 // Controle e Vitrine compartilham os recursos "avançados" (fornecedores,
 // clientes, gestão da empresa, receitas ilimitadas) — Vitrine só acrescenta
 // o cardápio público por cima, então é sempre um superconjunto de Controle.
 const CONTROLE_ONLY_ROUTES = { fornecedores: 'Fornecedores', clientes: 'Clientes', empresa: 'Empresa' };
-const FREE_RECIPE_LIMIT = 5;
+// Níveis de lucro não fazem parte dos limites de planLimits.js (fora do
+// escopo do PDF de reestruturação) — segue como constante à parte.
 const FREE_PROFIT_TIER_LIMIT = 1;
 
 function planStatus(profile) {
   if (profile.paymentStatus === 'pending') return 'payment_pending';
-  if (profile.plan === 'trial') {
-    return profile.trialEndsAt && new Date(profile.trialEndsAt) > new Date() ? 'trial' : 'expired';
-  }
-  return profile.plan; // 'basico' | 'controle' | 'vitrine'
+  return profile.plan; // 'gratuito' | 'controle' | 'vitrine'
 }
 
 function isControlePlan(profile) {
@@ -114,12 +113,6 @@ function isControlePlan(profile) {
 
 function isVitrinePlan(profile) {
   return planStatus(profile) === 'vitrine';
-}
-
-function trialDaysLeft(profile) {
-  if (!profile.trialEndsAt) return 0;
-  const ms = new Date(profile.trialEndsAt).getTime() - Date.now();
-  return Math.max(0, Math.ceil(ms / (24 * 60 * 60 * 1000)));
 }
 
 // Recurso do plano Controle: lembrete pra revisar os preços das receitas a
@@ -176,9 +169,9 @@ const state = {
   authError: '',
   authLoading: false,
   cookieConsent: localStorage.getItem('cookieConsent') === 'accepted',
-  // Plano escolhido na landing page antes de criar a conta (Básico após o
-  // teste, Controle ou Vitrine) — ver start-paid-signup/handleAuthSubmit.
-  // null = cadastro normal, com teste grátis do Básico.
+  // Plano pago escolhido na landing page antes de criar a conta (Controle
+  // ou Vitrine) — ver start-paid-signup/handleAuthSubmit. null = cadastro
+  // normal, direto no plano Gratuito.
   pendingPurchase: null,
   checkingPayment: false,
   upgradeCheckoutLoading: false,
@@ -207,10 +200,10 @@ const state = {
 
   // Falso até o primeiro carregamento do perfil de verdade (ver
   // loadUserData): enquanto isso, o profile abaixo é só um placeholder, e
-  // shellHtml() não deve usá-lo pra decidir aprovação/trial (ver
+  // shellHtml() não deve usá-lo pra decidir aprovação/plano (ver
   // profileLoaded em shellHtml).
   profileLoaded: false,
-  profile: { fullName: '', role: 'user', approvalStatus: 'approved', plan: 'trial', trialEndsAt: null },
+  profile: { fullName: '', role: 'user', approvalStatus: 'approved', plan: 'gratuito' },
   settings: { fullName: '', email: '' },
   company: {
     name: '', cnpj: '',
@@ -303,8 +296,7 @@ async function loadUserData() {
       fullName: profile.full_name || '',
       role: profile.role || 'user',
       approvalStatus: profile.approval_status || 'approved',
-      plan: profile.plan || 'trial',
-      trialEndsAt: profile.trial_ends_at || null,
+      plan: profile.plan || 'gratuito',
       planBillingCycle: profile.plan_billing_cycle || null,
       planRenewsAt: profile.plan_renews_at || null,
       planAutoRenew: profile.plan_auto_renew ?? true,
@@ -505,10 +497,10 @@ async function handleTogglePlanAutoRenew() {
   }
 }
 
-// Upgrade/troca de plano de uma conta já logada (trial expirado escolhendo
-// um plano, ou de dentro de Configurações) — sai do app pro checkout do
-// Mercado Pago; o acesso ao plano novo só libera quando o webhook confirmar
-// o pagamento (ver mercadopago-checkout/mercadopago-webhook).
+// Upgrade/troca de plano de uma conta já logada (de dentro de
+// Configurações) — sai do app pro checkout do Mercado Pago; o acesso ao
+// plano novo só libera quando o webhook confirmar o pagamento (ver
+// mercadopago-checkout/mercadopago-webhook).
 async function handleStartUpgradeCheckout(plan, billingCycle) {
   state.upgradeCheckoutLoading = true;
   state.statusMessage = '';
@@ -538,9 +530,11 @@ async function handleCheckPaymentStatus() {
   render();
 }
 
-// Downgrade (Controle→Básico ou Vitrine→Controle): não cria checkout novo —
-// só agenda a troca (ver scheduled_plan), que o webhook aplica na próxima
-// renovação, mantendo os recursos atuais até lá (ver planInfoPanel).
+// Downgrade (Controle→Gratuito ou Vitrine→Controle): não cria checkout
+// novo — só agenda a troca (ver scheduled_plan), que o webhook aplica na
+// próxima renovação, mantendo os recursos atuais até lá (ver
+// planInfoPanel). Downgrade pra Gratuito cancela a assinatura no Mercado
+// Pago em vez de trocar de plano pago (ver mercadopago-webhook).
 async function handleScheduleDowngrade(plan) {
   const previous = state.profile.scheduledPlan;
   state.profile.scheduledPlan = plan;
@@ -582,7 +576,7 @@ onAuthStateChange((session) => {
     state.ingredientColumnFilters = {};
     state.openIngredientFilterColumn = null;
     state.profileLoaded = false;
-    state.profile = { fullName: '', role: 'user', approvalStatus: 'approved', plan: 'trial', trialEndsAt: null };
+    state.profile = { fullName: '', role: 'user', approvalStatus: 'approved', plan: 'gratuito' };
     state.settings = { fullName: '', email: '' };
     state.settingsSnapshot = '{}';
     state.company = {
@@ -1921,14 +1915,13 @@ function renderClientesPage() {
 // Contas antigas ajustadas manualmente antes do checkout do Mercado Pago
 // existir ainda podem estar sem cobrança/renovação preenchidas — nesse caso
 // mostra que foi ativado manualmente em vez de inventar uma data.
-const PLAN_ORDER = ['basico', 'controle', 'vitrine'];
+const PLAN_ORDER = ['gratuito', 'controle', 'vitrine'];
 
 function planInfoPanel(profile) {
   const status = planStatus(profile);
   const rows = [`<div><dt>Plano atual</dt><dd>${planLabel(profile)}</dd></div>`];
-  if (status === 'trial') {
-    const days = trialDaysLeft(profile);
-    rows.push(`<div><dt>Termina em</dt><dd>${formatDate(profile.trialEndsAt)} (${days === 1 ? '1 dia' : `${days} dias`})</dd></div>`);
+  if (status === 'gratuito') {
+    rows.push('<div><dt>Cobrança</dt><dd class="dd-muted">Gratuito, sem cartão e sem prazo</dd></div>');
   } else {
     const cycleLabel = profile.planBillingCycle === 'mensal' ? 'Mensal' : profile.planBillingCycle === 'anual' ? 'Anual' : '';
     rows.push(cycleLabel
@@ -2057,16 +2050,13 @@ function renderEmpresaPage() {
 }
 
 // Rótulo do plano pra tabela do super admin: reaproveita planStatus() já
-// que o objeto vindo da edge function tem os mesmos campos (plan/trialEndsAt).
+// que o objeto vindo da edge function tem os mesmos campos (plan).
 function planLabel(u) {
   const status = planStatus(u);
   if (status === 'vitrine') return '<span class="status-pill status-pill-active">Vitrine</span>';
   if (status === 'controle') return '<span class="status-pill status-pill-active">Controle</span>';
-  if (status === 'basico') return '<span class="status-pill status-pill-active">Básico</span>';
-  if (status === 'expired') return '<span class="status-pill status-pill-danger">Teste expirado</span>';
   if (status === 'payment_pending') return '<span class="status-pill status-pill-pending">Aguardando pagamento</span>';
-  const days = trialDaysLeft(u);
-  return `<span class="status-pill status-pill-pending">Teste (${days === 1 ? '1 dia' : `${days} dias`})</span>`;
+  return '<span class="status-pill">Gratuito</span>';
 }
 
 // Nome de exibição de uma chave de plano solta (usado em pending_plan/
@@ -2286,42 +2276,7 @@ function pendingApprovalHtml(displayName) {
     </div>`;
 }
 
-// Teste grátis (7 dias, nível Básico) acabou e a conta ainda não tem um
-// plano pago — bloqueia o app inteiro até a assinatura (sem checkout
-// automático ainda, então por enquanto isso é resolvido manualmente).
-function trialExpiredHtml(displayName) {
-  return `
-    <div class="shell">
-      <header class="navbar">
-        <div class="navbar-inner">
-          <button type="button" class="brand" data-action="goto" data-route="inicio">
-            <img src="/assets/logotipo/SVG/logotipo-doce-preco.svg" alt="Doce Preço" class="brand-logo" />
-          </button>
-          <div class="navbar-user">
-            <span class="navbar-email">${escapeHtml(displayName)}</span>
-            <span class="navbar-divider" aria-hidden="true"></span>
-            <button type="button" class="text-link" data-action="logout">Sair</button>
-          </div>
-        </div>
-      </header>
-      <div class="main-area">
-        <div class="page">
-          <div class="pending-approval-panel panel">
-            <p class="eyebrow">Teste grátis encerrado</p>
-            <h2>Seu teste grátis de 7 dias acabou</h2>
-            <p>Para continuar usando o Doce Preço, escolha um dos nossos planos pagos.</p>
-            ${statusBox()}
-            <div class="action-row">
-              ${LANDING_PLANS.map((plan) => planCheckoutButton(plan.key)).join('')}
-            </div>
-          </div>
-        </div>
-      </div>
-      ${siteFooter()}
-    </div>`;
-}
-
-// Conta paga (Básico/Controle/Vitrine escolhido na landing page) esperando o
+// Conta paga (Controle/Vitrine escolhido na landing page) esperando o
 // webhook do Mercado Pago confirmar o pagamento — ver payment_status em
 // planStatus. Pode levar alguns instantes depois de voltar do checkout.
 function paymentPendingHtml(displayName, profile) {
@@ -2404,9 +2359,9 @@ function profileLoadingHtml() {
 
 function shellHtml() {
   // Antes do perfil de verdade carregar, state.profile é só o placeholder
-  // (plan: 'trial', trialEndsAt: null) — sem esse gate, os checks abaixo
-  // leriam isso como "trial encerrado" por um instante, mesmo pra quem já é
-  // Pro (ver profileLoaded em loadUserData).
+  // (plan: 'gratuito') — sem esse gate, os checks abaixo poderiam decidir
+  // algo com base nesse placeholder por um instante, mesmo pra quem já é
+  // Controle/Vitrine (ver profileLoaded em loadUserData).
   if (!state.profileLoaded) {
     return profileLoadingHtml();
   }
@@ -2422,10 +2377,6 @@ function shellHtml() {
   if (!isAdmin && state.profile.approvalStatus !== 'approved') {
     return pendingApprovalHtml(displayName);
   }
-  if (!isAdmin && planStatus(state.profile) === 'expired') {
-    return trialExpiredHtml(displayName);
-  }
-  const showTrialBanner = !isAdmin && planStatus(state.profile) === 'trial';
   const showUpgradeBanner = !isAdmin && !isVitrinePlan(state.profile);
   return `
     <div class="shell ${showUpgradeBanner ? 'has-upgrade-banner' : ''}">
@@ -2461,7 +2412,6 @@ function shellHtml() {
         </div>
       </header>
       ${isAdmin ? '' : mobileDrawer(displayName)}
-      ${showTrialBanner ? trialBanner() : ''}
       <div class="main-area">
         <div class="page">${renderPage()}</div>
       </div>
@@ -2472,17 +2422,8 @@ function shellHtml() {
     ${modalOverlay()}`;
 }
 
-function trialBanner() {
-  const days = trialDaysLeft(state.profile);
-  return `
-    <div class="trial-banner">
-      <p>Teste grátis: ${days === 1 ? 'falta 1 dia' : `faltam ${days} dias`}.</p>
-      <button type="button" class="ghost" data-action="goto" data-route="configuracoes">Ver planos</button>
-    </div>`;
-}
-
-// Banner fixo no rodapé da tela pra contas Básico/teste grátis (não mostra
-// pra quem já é Pro) — convite de upgrade sempre visível, sem depender de
+// Banner fixo no rodapé da tela pra contas Gratuito (não mostra pra quem já
+// é Controle/Vitrine) — convite de upgrade sempre visível, sem depender de
 // rolar até algum lugar específico da página.
 function upgradeBanner() {
   return `
@@ -2558,25 +2499,25 @@ const LANDING_STEPS_BIG_PHOTOS = [
   { src: '/assets/img/pexels-amar-9329437.webp', alt: 'Doces prontos para servir' },
 ];
 
-// O teste grátis (7 dias) já dá acesso nível Básico (ver planStatus) — por
-// isso vira uma nota no próprio cartão do Básico em vez de um cartão à
-// parte. Controle e Vitrine são o antigo "Pro" dividido em dois: Vitrine é
-// tudo do Controle + o cardápio público (ver isControlePlan/isVitrinePlan).
+// Gratuito é permanente, sem cartão (ver planStatus/planLimits.js) — por
+// isso vira o primeiro cartão em vez de um "teste" à parte. Controle e
+// Vitrine são o antigo "Pro" dividido em dois: Vitrine é tudo do Controle +
+// o cardápio público (ver isControlePlan/isVitrinePlan).
 const LANDING_PLANS = [
   {
-    key: 'basico',
-    name: 'Básico',
-    price: 19.9,
-    priceSuffix: '/mês',
+    key: 'gratuito',
+    name: 'Gratuito',
+    price: 0,
+    priceSuffix: 'para sempre',
     description: 'Para quem está começando a organizar os preços.',
-    note: 'Comece com 7 dias grátis — depois do período, R$ 19,90/mês.',
+    note: 'Sem cartão de crédito.',
     features: [
-      'Até 5 receitas e 1 nível de lucro',
-      'Ingredientes e despesas',
-      'Cálculo automático de preço sugerido',
+      'Até 20 receitas e 50 ingredientes',
+      'Ficha técnica e cálculo automático de preço sugerido',
+      'Dashboard básico e backup automático',
     ],
     highlight: false,
-    cta: 'Começar teste grátis',
+    cta: 'Começar grátis',
   },
   {
     key: 'controle',
@@ -2585,10 +2526,10 @@ const LANDING_PLANS = [
     priceSuffix: '/mês',
     description: 'Para quem quer controlar o negócio inteiro.',
     features: [
-      'Receitas ilimitadas e 3 níveis de lucro',
-      'Tudo do plano Básico',
-      'Gestão de fornecedores',
-      'Gestão de clientes',
+      'Receitas e ingredientes ilimitados',
+      'Tudo do plano Gratuito',
+      'Relatórios, PDF e histórico de preços',
+      'Gestão de fornecedores e clientes',
       'Gestão da empresa (CNPJ, endereço, links de delivery)',
     ],
     highlight: true,
@@ -2611,9 +2552,9 @@ const LANDING_PLANS = [
 ];
 
 // Botão que dispara o checkout do Mercado Pago pra uma conta já logada
-// (trial expirado escolhendo um plano, ou upgrade/troca dentro de
-// Configurações — ver start-upgrade-checkout). O cadastro novo direto da
-// landing page usa start-paid-signup em vez deste (ver LANDING_PLANS acima).
+// (upgrade/troca dentro de Configurações — ver start-upgrade-checkout). O
+// cadastro novo direto da landing page usa start-paid-signup em vez deste
+// (ver LANDING_PLANS acima).
 function planCheckoutButton(planKey, billingCycle = 'mensal', label) {
   const plan = LANDING_PLANS.find((p) => p.key === planKey);
   const text = label || (plan ? `Assinar ${plan.name}` : 'Assinar');
@@ -2634,7 +2575,7 @@ function landingNav() {
         </ul>
         <div class="landing-nav-actions">
           <button type="button" class="text-link" data-action="goto" data-route="entrar">Entrar</button>
-          <button type="button" data-action="goto" data-route="cadastro">Teste grátis</button>
+          <button type="button" data-action="goto" data-route="cadastro">Começar grátis</button>
         </div>
       </div>
     </header>`;
@@ -2806,7 +2747,7 @@ function landingHtml() {
         <div class="landing-section-inner">
           <p class="eyebrow-pill">Planos</p>
           <h2><span class="muted-tone">Escolha o plano</span> da sua confeitaria</h2>
-          <p class="landing-section-subtitle">O plano Básico começa com 7 dias de teste grátis. Cancele quando quiser.</p>
+          <p class="landing-section-subtitle">O plano Gratuito não tem prazo nem cartão. Cancele quando quiser.</p>
           <div class="landing-pricing-grid">
             ${LANDING_PLANS.map((plan, index) => `
               <div class="landing-plan-card reveal ${plan.highlight ? 'is-highlight' : ''}" style="--reveal-delay: ${(index * 0.12).toFixed(2)}s">
@@ -2816,12 +2757,12 @@ function landingHtml() {
                   <h3>${escapeHtml(plan.name)}</h3>
                 </div>
                 <p class="landing-plan-description">${escapeHtml(plan.description)}</p>
-                <p class="landing-plan-price">${formatCurrency(plan.price)}<span>${plan.priceSuffix}</span></p>
+                <p class="landing-plan-price">${plan.price ? formatCurrency(plan.price) : 'Grátis'}<span>${plan.priceSuffix}</span></p>
                 ${plan.note ? `<p class="landing-plan-note">${escapeHtml(plan.note)}</p>` : ''}
                 <ul class="landing-plan-features">
                   ${plan.features.map((f) => `<li>${icon('check')}<span>${escapeHtml(f)}</span></li>`).join('')}
                 </ul>
-                <button type="button" class="${plan.highlight ? '' : 'ghost'}" ${plan.key === 'basico'
+                <button type="button" class="${plan.highlight ? '' : 'ghost'}" ${plan.key === 'gratuito'
                   ? 'data-action="goto" data-route="cadastro"'
                   : `data-action="start-paid-signup" data-plan="${plan.key}" data-cycle="mensal"`}>${escapeHtml(plan.cta)}</button>
               </div>`).join('')}
@@ -2874,7 +2815,7 @@ function renderLegalPage(title, paragraphs) {
 function renderTermosPage() {
   return renderLegalPage('Termos de uso', [
     'Ao usar o Doce Preço, você concorda em utilizar a ferramenta para calcular preços e organizar receitas, ingredientes e despesas do seu próprio negócio.',
-    'Oferecemos um período de teste grátis de 7 dias com acesso completo à ferramenta. Depois desse período, a continuidade do uso depende da contratação de um dos planos pagos (Básico ou Pro).',
+    'Oferecemos um plano Gratuito permanente, sem cartão de crédito, com limites de uso (receitas, ingredientes e outros recursos). Recursos avançados como relatórios, PDF, histórico de preços e a vitrine online exigem a contratação de um dos planos pagos (Controle ou Vitrine).',
     'A cobrança dos planos pagos é processada por uma plataforma de pagamentos parceira (Mercado Pago). O Doce Preço não processa nem armazena os dados do seu cartão em nenhum momento — veja detalhes na Política de Privacidade.',
     'Os cálculos apresentados são estimativas baseadas nos dados informados por você; a conferência dos valores antes de aplicá-los é de responsabilidade do usuário.',
     'Não é permitido usar a plataforma para armazenar dados de terceiros sem autorização, nem tentar acessar contas ou dados de outros usuários.',
@@ -3484,6 +3425,11 @@ async function handleBulkDeleteProducts() {
 // ---------------- Ações: ingredientes / despesas / lucro / fornecedores ----------------
 
 async function handleNewSavedIngredient(form) {
+  if (!canUse(state.profile.plan, 'ingredients', state.savedIngredients.length)) {
+    state.activeModal.error = `Você atingiu o limite de ${limitFor(state.profile.plan, 'ingredients')} ingredientes do plano Gratuito. Faça upgrade para o Controle para cadastrar ingredientes ilimitados.`;
+    render();
+    return;
+  }
   const formData = new FormData(form);
   const draft = {
     name: formData.get('name'),
@@ -4380,9 +4326,9 @@ app.addEventListener('click', (event) => {
 
   switch (action) {
     case 'goto':
-      // Navegação "normal" pro cadastro (teste grátis do Básico) — limpa um
-      // plano pago escolhido antes (ver start-paid-signup), pra não tratar
-      // um cadastro de teste grátis como se fosse uma compra pendente.
+      // Navegação "normal" pro cadastro (plano Gratuito) — limpa um plano
+      // pago escolhido antes (ver start-paid-signup), pra não tratar um
+      // cadastro grátis como se fosse uma compra pendente.
       if (el.dataset.route === 'cadastro') state.pendingPurchase = null;
       requestNavigation(() => navigate(`#/${el.dataset.route}`));
       break;
@@ -4423,8 +4369,8 @@ app.addEventListener('click', (event) => {
       openConfirmBulkDeleteProducts();
       break;
     case 'start-wizard':
-      if (!isControlePlan(state.profile) && state.savedProducts.length >= FREE_RECIPE_LIMIT) {
-        state.statusMessage = `Você atingiu o limite de ${FREE_RECIPE_LIMIT} receitas do plano Básico. Faça upgrade para o Controle para cadastrar receitas ilimitadas.`;
+      if (!canUse(state.profile.plan, 'recipes', state.savedProducts.length)) {
+        state.statusMessage = `Você atingiu o limite de ${limitFor(state.profile.plan, 'recipes')} receitas do plano Gratuito. Faça upgrade para o Controle para cadastrar receitas ilimitadas.`;
         render();
         // O aviso aparece no topo da página — sem isso, clicar em "Começar"
         // com a página rolada pra baixo (ex.: olhando a lista de receitas)
@@ -4529,7 +4475,7 @@ app.addEventListener('click', (event) => {
       break;
     case 'add-tier':
       if (!isControlePlan(state.profile) && state.profitTiers.length >= FREE_PROFIT_TIER_LIMIT) {
-        state.statusMessage = `Você atingiu o limite de ${FREE_PROFIT_TIER_LIMIT} nível de lucro do plano Básico. Faça upgrade para o Controle para cadastrar até 3 níveis.`;
+        state.statusMessage = `Você atingiu o limite de ${FREE_PROFIT_TIER_LIMIT} nível de lucro do plano Gratuito. Faça upgrade para o Controle para cadastrar até 3 níveis.`;
         render();
         window.scrollTo({ top: 0, behavior: 'smooth' });
         break;

@@ -12,10 +12,10 @@ function toNumber(value) {
 
 // ---------- Assinaturas (Mercado Pago) ----------
 
-// Cadastro novo escolhendo um plano pago (Básico após o teste, Controle ou
-// Vitrine) direto na landing page: cria a conta e já devolve o link do
-// checkout do Mercado Pago — a liberação de verdade do plano acontece no
-// webhook, depois do pagamento confirmar (ver planStatus/payment_status).
+// Cadastro novo escolhendo um plano pago (Controle ou Vitrine) direto na
+// landing page: cria a conta e já devolve o link do checkout do Mercado
+// Pago — a liberação de verdade do plano acontece no webhook, depois do
+// pagamento confirmar (ver planStatus/payment_status).
 export async function createSignupCheckout({ plan, billingCycle, email, password, fullName, companyName, captchaToken }) {
   const response = await fetch(`${FUNCTIONS_URL}/mercadopago-checkout`, {
     method: 'POST',
@@ -64,8 +64,9 @@ export async function getProfile(userId) {
   const { data, error } = await supabase
     .from('profiles')
     .select(`
-      full_name, company_name, cnpj, role, approval_status, plan, trial_ends_at,
+      full_name, company_name, cnpj, role, approval_status, plan,
       plan_billing_cycle, plan_renews_at, plan_auto_renew, created_at, last_price_review_at,
+      payment_status, pending_plan, pending_billing_cycle, scheduled_plan,
       cep, street, neighborhood, city, state, address_number, complement,
       ifood_url, link_99_url, keeta_url, logo_url, slug
     `)
@@ -74,8 +75,9 @@ export async function getProfile(userId) {
   if (error) throw error;
   return data ?? {
     full_name: null, company_name: null, cnpj: null, role: 'user', approval_status: 'approved',
-    plan: 'trial', trial_ends_at: null, plan_billing_cycle: null, plan_renews_at: null, plan_auto_renew: true,
+    plan: 'gratuito', plan_billing_cycle: null, plan_renews_at: null, plan_auto_renew: true,
     created_at: null, last_price_review_at: null,
+    payment_status: 'none', pending_plan: null, pending_billing_cycle: null, scheduled_plan: null,
     cep: null, street: null, neighborhood: null, city: null, state: null, address_number: null, complement: null,
     ifood_url: null, link_99_url: null, keeta_url: null, logo_url: null, slug: null,
   };

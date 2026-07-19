@@ -149,26 +149,8 @@
   }
 }
 
-.trial-banner {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 16px;
-  flex-wrap: wrap;
-  padding: 10px clamp(16px, 4vw, 32px);
-  background: $surface-tint;
-  border-bottom: 1px solid $border;
-
-  p {
-    margin: 0;
-    color: $primary-600;
-    font-weight: $fw-bold;
-    font-size: 0.88rem;
-  }
-}
-
-// Banner fixo no rodapé da tela convidando contas Básico/teste grátis a
-// virar Pro (ver upgradeBanner em main.js) — some pra quem já é Pro.
+// Banner fixo no rodapé da tela convidando contas Gratuito a virar
+// Controle/Vitrine (ver upgradeBanner em main.js) — some pra quem já é Vitrine.
 .upgrade-banner {
   position: fixed;
   left: 0;

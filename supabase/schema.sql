@@ -32,16 +32,15 @@ create table if not exists public.profiles (
   role text not null default 'user' constraint profiles_role_check check (role in ('user', 'admin')),
   approval_status text not null default 'pending'
     constraint profiles_approval_status_check check (approval_status in ('pending', 'approved', 'rejected')),
-  -- Teste grátis de 7 dias com acesso de nível Básico, sem cartão — basta
-  -- criar a conta (ver gating em planStatus, main.js). Controle e Vitrine
-  -- exigem pagamento confirmado antes de liberar o acesso: o cadastro fica
-  -- represado em payment_status = 'pending' até o webhook do Mercado Pago
-  -- confirmar (ver supabase/functions/mercadopago-webhook). Controle e
-  -- Vitrine compartilham os recursos avançados (fornecedores, clientes,
-  -- gestão da empresa, receitas ilimitadas); Vitrine acrescenta o cardápio
-  -- público por cima.
-  plan text not null default 'trial' constraint profiles_plan_check check (plan in ('trial', 'basico', 'controle', 'vitrine')),
-  trial_ends_at timestamptz not null default (now() + interval '7 days'),
+  -- Gratuito é permanente (sem prazo, sem cartão) — os limites de uso vêm
+  -- de src/planLimits.js no client (nº de receitas/ingredientes etc.), não
+  -- de uma data de expiração. Controle e Vitrine exigem pagamento
+  -- confirmado antes de liberar o acesso: o cadastro fica represado em
+  -- payment_status = 'pending' até o webhook do Mercado Pago confirmar (ver
+  -- supabase/functions/mercadopago-webhook). Controle e Vitrine compartilham
+  -- os recursos avançados (fornecedores, clientes, gestão da empresa,
+  -- receitas ilimitadas); Vitrine acrescenta o cardápio público por cima.
+  plan text not null default 'gratuito' constraint profiles_plan_check check (plan in ('gratuito', 'controle', 'vitrine')),
   -- Preenchidos pelo webhook do Mercado Pago ao confirmar o pagamento
   -- (mensal/anual e a data da próxima cobrança, ver preapproval). Ficam
   -- nulos até a primeira confirmação (ver Configurações no client, que
@@ -61,21 +60,22 @@ create table if not exists public.profiles (
   -- conta nasce com payment_status = 'pending' e pending_plan/
   -- pending_billing_cycle guardando o que foi escolhido — o acesso fica
   -- bloqueado (ver planStatus) até o webhook confirmar o pagamento e mover
-  -- pending_plan pra plan de verdade. 'none' é o valor de contas trial/
-  -- básico normais, que nunca passam por isso.
+  -- pending_plan pra plan de verdade. 'none' é o valor de contas gratuitas
+  -- normais, que nunca passam por isso.
   payment_status text not null default 'none'
     constraint profiles_payment_status_check check (payment_status in ('none', 'pending', 'paid')),
-  pending_plan text constraint profiles_pending_plan_check check (pending_plan in ('basico', 'controle', 'vitrine')),
+  pending_plan text constraint profiles_pending_plan_check check (pending_plan in ('controle', 'vitrine')),
   pending_billing_cycle text constraint profiles_pending_billing_cycle_check check (pending_billing_cycle in ('mensal', 'anual')),
   -- ID da assinatura (preapproval) ativa no Mercado Pago — necessário pra
   -- cancelar a assinatura antiga num upgrade/downgrade e pra reconciliar
   -- notificações de renovação do webhook.
   mercadopago_preapproval_id text,
-  -- Downgrade agendado (Controle→Básico ou Vitrine→Controle): o cliente já
+  -- Downgrade agendado (Controle→Gratuito ou Vitrine→Controle): o cliente já
   -- pagou o período atual, então mantém os recursos até plan_renews_at — o
-  -- webhook aplica essa troca (e ajusta a assinatura no Mercado Pago) só na
-  -- próxima renovação, e depois limpa este campo.
-  scheduled_plan text constraint profiles_scheduled_plan_check check (scheduled_plan in ('basico', 'controle', 'vitrine')),
+  -- webhook aplica essa troca só na próxima renovação (cancelando a
+  -- assinatura no Mercado Pago se for pra Gratuito, ou trocando de plano se
+  -- for pra Controle) e depois limpa este campo.
+  scheduled_plan text constraint profiles_scheduled_plan_check check (scheduled_plan in ('gratuito', 'controle', 'vitrine')),
   -- Recurso do plano Controle: aviso a cada 30 dias pra revisar os preços
   -- das receitas (ver pricesNeedReview no client). Nulo até a primeira
   -- revisão marcada; nesse caso o client usa created_at como referência.

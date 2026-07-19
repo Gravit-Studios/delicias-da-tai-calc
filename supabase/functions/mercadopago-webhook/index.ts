@@ -182,15 +182,34 @@ Deno.serve(async (req) => {
     } else {
       // Renovação de uma assinatura já ativa — só atualiza a data e aplica
       // um downgrade agendado (ver scheduled_plan), se houver.
-      const nextPaymentDate = computeNextPaymentDate(subscription);
-      const updates: Record<string, unknown> = { plan_renews_at: nextPaymentDate };
-      if (profile.scheduled_plan) {
-        updates.plan = profile.scheduled_plan;
-        updates.scheduled_plan = null;
-        const newPlanId = planIdFor(profile.scheduled_plan, profile.plan_billing_cycle || 'mensal');
-        if (newPlanId) await updatePreapprovalPlan(subscription.id, newPlanId);
+      if (profile.scheduled_plan === 'gratuito') {
+        // Gratuito não tem cobrança — cancela a assinatura no Mercado Pago
+        // em vez de trocar de plano pago (não existe
+        // MERCADOPAGO_PLAN_GRATUITO_* pra updatePreapprovalPlan usar).
+        await cancelPreapproval(subscription.id);
+        await admin
+          .from('profiles')
+          .update({
+            plan: 'gratuito',
+            scheduled_plan: null,
+            plan_billing_cycle: null,
+            plan_renews_at: null,
+            plan_auto_renew: false,
+            payment_status: 'none',
+            mercadopago_preapproval_id: null,
+          })
+          .eq('id', profileId);
+      } else {
+        const nextPaymentDate = computeNextPaymentDate(subscription);
+        const updates: Record<string, unknown> = { plan_renews_at: nextPaymentDate };
+        if (profile.scheduled_plan) {
+          updates.plan = profile.scheduled_plan;
+          updates.scheduled_plan = null;
+          const newPlanId = planIdFor(profile.scheduled_plan, profile.plan_billing_cycle || 'mensal');
+          if (newPlanId) await updatePreapprovalPlan(subscription.id, newPlanId);
+        }
+        await admin.from('profiles').update(updates).eq('id', profileId);
       }
-      await admin.from('profiles').update(updates).eq('id', profileId);
     }
   } else if (['cancelled', 'paused'].includes(subscription.status) && profile.mercadopago_preapproval_id === subscription.id) {
     // Cancelamento pelo próprio Mercado Pago (ex.: cliente cancelou direto
