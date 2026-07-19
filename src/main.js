@@ -34,6 +34,31 @@ function escapeHtml(value) {
   return String(value ?? '').replace(/[&<>"]/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[char]));
 }
 
+// O Supabase Auth (GoTrue) devolve error.message sempre em inglês, sem opção
+// de localização no servidor — traduz as mensagens mais comuns pra exibir em
+// português nas telas de login/cadastro/senha. Mensagens não mapeadas caem
+// no próprio texto original (em inglês) em vez de travar a tela.
+function translateAuthError(message) {
+  const msg = String(message ?? '');
+  const rules = [
+    [/invalid login credentials/i, () => 'E-mail ou senha incorretos.'],
+    [/new password should be different from the old password/i, () => 'A nova senha deve ser diferente da senha atual.'],
+    [/user already registered/i, () => 'Este e-mail já está cadastrado.'],
+    [/password should be at least (\d+) characters/i, (m) => `A senha deve ter pelo menos ${m[1]} caracteres.`],
+    [/email not confirmed/i, () => 'Confirme seu e-mail antes de entrar.'],
+    [/email rate limit exceeded/i, () => 'Muitas tentativas. Aguarde alguns minutos e tente novamente.'],
+    [/for security purposes, you can only request this (?:after|once every) (\d+) seconds/i, (m) => `Por segurança, aguarde ${m[1]} segundos antes de tentar de novo.`],
+    [/unable to validate email address/i, () => 'E-mail inválido.'],
+    [/token has expired or is invalid/i, () => 'Link expirado ou inválido. Solicite um novo link.'],
+    [/user not found/i, () => 'Usuário não encontrado.'],
+  ];
+  for (const [pattern, translate] of rules) {
+    const match = msg.match(pattern);
+    if (match) return translate(match);
+  }
+  return msg;
+}
+
 // Vira âncora de seção (categoria do cardápio público) — só letras/números,
 // sem acento, hífen no resto.
 function slugify(value) {
@@ -2965,7 +2990,7 @@ async function handlePasswordRecoverySubmit(form) {
     showSuccess('Senha definida com sucesso!');
   } catch (error) {
     state.passwordRecoveryLoading = false;
-    state.passwordRecoveryError = error.message;
+    state.passwordRecoveryError = translateAuthError(error.message);
     render();
   }
 }
@@ -3390,7 +3415,7 @@ async function handleAuthSubmit(form) {
       showSuccess('Conta criada! Verifique seu e-mail para confirmar o acesso e aguarde a aprovação de um administrador para começar a usar o app.', 3200);
       return;
     } catch (error) {
-      state.authError = error.message;
+      state.authError = translateAuthError(error.message);
     } finally {
       state.authLoading = false;
       resetCaptcha('.turnstile-widget[data-widget="signup"]');
@@ -3411,7 +3436,7 @@ async function handleAuthSubmit(form) {
   try {
     await signIn(email, password, loginCaptchaToken);
   } catch (error) {
-    state.authError = error.message;
+    state.authError = translateAuthError(error.message);
   } finally {
     state.authLoading = false;
     resetCaptcha('.turnstile-widget[data-widget="login"]');
@@ -3953,7 +3978,7 @@ async function handleChangePasswordSubmit(form) {
     showSuccess('Senha alterada com sucesso!');
   } catch (error) {
     state.activeModal.loading = false;
-    state.activeModal.error = error.message;
+    state.activeModal.error = translateAuthError(error.message);
     render();
   } finally {
     resetCaptcha('.turnstile-widget[data-widget="change-password"]');
@@ -3978,7 +4003,7 @@ async function handleForgotPasswordSubmit(form) {
     render();
   } catch (error) {
     state.activeModal.loading = false;
-    state.activeModal.error = error.message;
+    state.activeModal.error = translateAuthError(error.message);
     render();
   } finally {
     resetCaptcha('.turnstile-widget[data-widget="forgot-password"]');
