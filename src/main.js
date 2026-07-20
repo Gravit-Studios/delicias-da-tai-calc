@@ -3042,9 +3042,14 @@ function authHtml() {
           </div>
           <p class="eyebrow">${isSignUp ? 'Comece agora' : 'Bem-vindo de volta'}</p>
           <h1 class="auth-title">${isSignUp ? 'Crie sua conta' : 'Acesse sua conta'}</h1>
-          <p class="auth-subtitle">${purchasePlan
-            ? `Assinando o plano ${escapeHtml(purchasePlan.name)} (${formatCurrency(purchasePlan.price)}${purchasePlan.priceSuffix}). Depois de criar a conta você será levado ao pagamento.`
-            : isSignUp ? 'Grátis para sempre, sem cartão de crédito. Enviamos um link por e-mail pra você criar sua senha.' : 'Bem-vinda de volta.'}</p>
+          <p class="auth-subtitle">${(() => {
+            if (!purchasePlan) return isSignUp ? 'Grátis para sempre, sem cartão de crédito. Enviamos um link por e-mail pra você criar sua senha.' : 'Bem-vinda de volta.';
+            // Preço tem que refletir o ciclo escolhido no toggle da landing
+            // (mensal/anual) — usar purchasePlan.price direto (sempre o
+            // mensal) mostrava o valor errado pra quem veio do anual.
+            const priceDisplay = landingPlanPriceDisplay(purchasePlan, purchase.billingCycle);
+            return `Assinando o plano ${escapeHtml(purchasePlan.name)} (${priceDisplay.price}${priceDisplay.suffix}). Depois de criar a conta você será levado ao pagamento.`;
+          })()}</p>
           <form data-form="auth">
             ${isSignUp ? '<label>Seu nome<input name="fullName" type="text" placeholder="Maria Silva" required /></label><label>Nome da confeitaria<input name="companyName" type="text" placeholder="Ateliê da Maria" /></label>' : ''}
             <label>E-mail<input name="email" type="email" placeholder="seuemail@exemplo.com" required /></label>
