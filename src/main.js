@@ -2962,7 +2962,7 @@ function landingHtml() {
       </section>
 
       <section class="landing-final-cta reveal">
-        <img src="/assets/img/pexels-amar-9329437.webp" alt="" class="landing-final-cta-photo" />
+        <img src="/assets/img/banner-cadastro.webp" alt="" class="landing-final-cta-photo" />
         <div class="landing-final-cta-overlay"></div>
         <div class="landing-final-cta-badge" aria-hidden="true">
           <svg viewBox="0 0 200 200">
