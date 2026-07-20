@@ -1036,6 +1036,11 @@
     max-width: 16ch;
     font-size: clamp(2rem, 4.5vw, 3rem);
   }
+
+  .landing-section-subtitle {
+    margin: 12px 0 0;
+    color: rgba($white, 0.75);
+  }
 }
 
 .landing-feature-cards {

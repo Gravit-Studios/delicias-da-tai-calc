@@ -2869,7 +2869,7 @@ function landingFeaturePanel() {
       <div class="landing-section-inner landing-feature-inner">
         <p class="eyebrow-pill landing-feature-eyebrow">Praticidade todo dia</p>
         <h2>Feito pra rotina da sua confeitaria</h2>
-        <p class="landing-section-subtitle" style="margin:12px 0 0;color:rgba(255,255,255,0.75)">Sem planilha, sem calculadora, sem achismo — só o preço certo, sempre à mão.</p>
+        <p class="landing-section-subtitle">Sem planilha, sem calculadora, sem achismo — só o preço certo, sempre à mão.</p>
         <div class="landing-feature-cards">
           ${cards.map((c, i) => `
             <div class="landing-feature-card reveal" style="--reveal-delay: ${(i * 0.1).toFixed(2)}s">
