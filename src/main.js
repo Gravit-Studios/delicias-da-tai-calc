@@ -3217,8 +3217,9 @@ function publicMenuHeader(company, categories) {
     <header class="menu-header">
       <div class="menu-header-inner">
         <a class="menu-brand" href="${escapeHtml(publicMenuUrl(company.slug))}">
-          ${company.logo_url ? `<img src="${escapeHtml(company.logo_url)}" alt="" class="menu-logo" />` : ''}
-          <span>${escapeHtml(company.company_name || 'Cardápio')}</span>
+          ${company.logo_url
+            ? `<img src="${escapeHtml(company.logo_url)}" alt="${escapeHtml(company.company_name || 'Cardápio')}" class="menu-logo" />`
+            : `<span>${escapeHtml(company.company_name || 'Cardápio')}</span>`}
         </a>
         ${hasNav ? `<button type="button" class="navbar-menu-toggle" data-action="toggle-mobile-menu" aria-label="Abrir categorias">${icon('menu')}</button>` : ''}
       </div>
