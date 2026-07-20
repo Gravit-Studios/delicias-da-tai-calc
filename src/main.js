@@ -4048,7 +4048,7 @@ async function handleSaveCompany() {
     const logoUrl = draft.logoFile
       ? await db.uploadCompanyLogo(state.session.user.id, draft.logoFile)
       : draft.logoUrl;
-    await db.updateProfile(state.session.user.id, {
+    const updated = await db.updateProfile(state.session.user.id, {
       company_name: draft.name,
       cnpj: draft.cnpj,
       cep: draft.cep,
@@ -4066,6 +4066,10 @@ async function handleSaveCompany() {
     draft.logoUrl = logoUrl;
     draft.logoFile = null;
     draft.logoPreviewUrl = '';
+    // O slug é regenerado no banco a partir do nome (ver
+    // handle_company_name_change no schema.sql) — sem isso o link/QR do
+    // cardápio continuaria mostrando o slug antigo até recarregar a página.
+    draft.slug = updated.slug;
     state.companySnapshot = companySnapshotOf(draft);
     showSuccess('Dados da empresa salvos!');
     render();

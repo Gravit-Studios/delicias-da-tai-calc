@@ -28,9 +28,10 @@ create table if not exists public.profiles (
   link_99_url text,
   keeta_url text,
   -- Cardápio público (recurso do plano Vitrine): logotipo e slug único do
-  -- link (#/cardapio/:slug). O slug é gerado uma única vez no cadastro (ver
-  -- handle_new_user abaixo) e nunca regenerado depois, pra não quebrar
-  -- links já compartilhados.
+  -- link (#/cardapio/:slug). O slug nasce do nome da empresa no cadastro
+  -- (ver handle_new_user abaixo) e é regenerado automaticamente sempre que
+  -- company_name muda (ver handle_company_name_change) — o usuário nunca
+  -- edita o slug direto, só o nome da empresa em Configurações.
   logo_url text,
   slug text not null unique,
   created_at timestamptz not null default now(),
@@ -145,6 +146,36 @@ end;
 $$;
 drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created after insert on auth.users for each row execute function public.handle_new_user();
+
+-- Regenera o slug sempre que o nome da empresa muda (ex.: em Configurações)
+-- — mesma lógica de transliteração/desempate do handle_new_user acima, mas
+-- comparando contra os outros perfis (exclui a própria linha da checagem de
+-- unicidade). Link antigo compartilhado com esse slug para de funcionar;
+-- é a troca intencional pra sempre refletir o nome atual da empresa.
+create or replace function public.handle_company_name_change()
+returns trigger language plpgsql security definer set search_path = public, extensions as $$
+declare
+  base_slug text;
+  candidate_slug text;
+begin
+  base_slug := trim(both '-' from lower(regexp_replace(
+    extensions.unaccent(coalesce(nullif(new.company_name, ''), old.slug)),
+    '[^a-zA-Z0-9]+', '-', 'g'
+  )));
+  candidate_slug := base_slug;
+  if exists (select 1 from public.profiles where slug = candidate_slug and id <> new.id) then
+    candidate_slug := base_slug || '-' || substr(new.id::text, 1, 6);
+  end if;
+  new.slug := candidate_slug;
+  return new;
+end;
+$$;
+drop trigger if exists on_profile_company_name_updated on public.profiles;
+create trigger on_profile_company_name_updated
+  before update on public.profiles
+  for each row
+  when (new.company_name is distinct from old.company_name)
+  execute function public.handle_company_name_change();
 
 -- =========================================================
 -- ingredients — base de insumos/embalagens (Nome, Kg/Preço, Categoria, Marca)
