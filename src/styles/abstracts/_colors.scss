@@ -56,8 +56,25 @@ $tertiary-700: #9b848d;
 $tertiary-800: #7e6b72;
 $tertiary-900: #574a4f;
 
-// Neutros (texto, superfícies, fundo) — cinza-azulado frio
-$ink-900: #1b2233; // texto principal
+// Grayscale — escala 100–900 cinza-azulada fria, gerada com a mesma fórmula
+// de mistura das cores de marca (interpolação RGB em direção a branco/preto
+// a partir de um tom-base) — existe pra dar consistência a qualquer uso novo
+// de neutro fora dos tokens semânticos abaixo. $ink-900 é literalmente
+// $neutral-900 (mesmo valor); $ink-700/$ink-400 são tons de texto escolhidos
+// à mão antes dessa escala existir e ficam como estão pra não mudar nenhuma
+// cor já em tela — prefira $neutral-* em código novo.
+$neutral-100: #f4f5f8;
+$neutral-200: #e3e6ed;
+$neutral-300: #c4cad8;
+$neutral-400: #949fb9;
+$neutral-500: #475986;
+$neutral-600: #3a496e;
+$neutral-700: #303c5b;
+$neutral-800: #27314a;
+$neutral-900: #1b2233;
+
+// Neutros semânticos (texto, superfícies, fundo) — cinza-azulado frio
+$ink-900: $neutral-900; // texto principal
 $ink-700: #4c5568; // texto secundário / labels
 $ink-400: #8993a8; // texto auxiliar / placeholders
 $white: #fff; // texto/ícone sobre fundo colorido (não confundir com $surface)
@@ -67,8 +84,11 @@ $surface-tint: #eef1f7;
 $bg: #f5f7fb;
 $border: rgba($ink-900, 0.1);
 
-// Feedback — tons escurecidos o suficiente pra garantir contraste AA (4.5:1)
-// como texto sobre fundo branco ou sobre o próprio tom claro (100).
+// Sistema (feedback) — danger/success com tom claro (100, fundo sólido de
+// badge/alerta) e tom base (500, texto/ícone/borda) — mesmo tom-base já usado
+// hoje como texto direto tem contraste AA garantido contra branco, então não
+// precisam de uma variação -700 como as cores de marca.
 $danger-100: #fce7e5;
 $danger-500: #ba352e;
+$success-100: #f2f7f5;
 $success-500: #267f56;
