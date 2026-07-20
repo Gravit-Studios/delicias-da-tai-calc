@@ -332,6 +332,34 @@ export async function deleteProduct(id) {
   if (error) throw error;
 }
 
+// ---------- Histórico de preços (recurso do plano Controle) ----------
+
+export async function insertPricingHistory(userId, entry) {
+  const { error } = await supabase.from('pricing_history').insert({
+    user_id: userId,
+    product_id: entry.productId,
+    product_name: entry.productName,
+    ingredients_cost: entry.ingredientsCost,
+    expenses_cost: entry.expensesCost,
+    total_cost: entry.totalCost,
+    unit_cost: entry.unitCost,
+    yield_amount: entry.yieldAmount,
+    tiers: entry.tiers,
+  });
+  if (error) throw error;
+}
+
+export async function listPricingHistory(productId) {
+  const { data, error } = await supabase
+    .from('pricing_history')
+    .select('*')
+    .eq('product_id', productId)
+    .order('created_at', { ascending: false })
+    .limit(20);
+  if (error) throw error;
+  return data;
+}
+
 // ---------- Despesas fixas (base global, 1x por usuário) ----------
 
 export async function listExpenseCategories(userId) {

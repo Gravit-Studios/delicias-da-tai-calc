@@ -1,0 +1,49 @@
+@use '../abstracts' as *;
+
+// Relatório (recurso do plano Controle) — pensado pra virar PDF via o
+// próprio "Imprimir" do navegador (Ctrl/Cmd+P -> Salvar como PDF), ver
+// renderRelatorioPage em main.js. Sem isso o navegador imprimiria a página
+// inteira (navbar, footer, banner de upgrade) junto com a tabela.
+.report-header {
+  margin-bottom: 24px;
+
+  h2 {
+    margin: 0 0 4px;
+  }
+}
+
+.report-table {
+  width: 100%;
+}
+
+@media print {
+  .navbar,
+  .site-footer,
+  .upgrade-banner,
+  .cookie-bar,
+  .mobile-drawer-overlay,
+  .modal-overlay,
+  .print-hide {
+    display: none !important;
+  }
+
+  .main-area,
+  .page {
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+  }
+
+  body {
+    background: $white;
+  }
+
+  .report-table {
+    border-collapse: collapse;
+
+    th,
+    td {
+      border-bottom: 1px solid $secondary-200;
+    }
+  }
+}

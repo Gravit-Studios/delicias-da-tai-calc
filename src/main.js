@@ -121,7 +121,7 @@ function nameFromEmail(email) {
 // Controle e Vitrine compartilham os recursos "avançados" (fornecedores,
 // clientes, gestão da empresa, receitas ilimitadas) — Vitrine só acrescenta
 // o cardápio público por cima, então é sempre um superconjunto de Controle.
-const CONTROLE_ONLY_ROUTES = { fornecedores: 'Fornecedores', clientes: 'Clientes', empresa: 'Empresa' };
+const CONTROLE_ONLY_ROUTES = { fornecedores: 'Fornecedores', clientes: 'Clientes', empresa: 'Empresa', relatorio: 'Relatório' };
 // Níveis de lucro não fazem parte dos limites de planLimits.js (fora do
 // escopo do PDF de reestruturação) — segue como constante à parte.
 const FREE_PROFIT_TIER_LIMIT = 1;
@@ -185,6 +185,10 @@ function defaultDetail() {
     menuPriceTier: '',
     menuPublished: false,
     errors: {},
+    // Histórico de preços (recurso do plano Controle) — ver ensureDetailLoaded
+    // e renderPriceHistoryPanel.
+    priceHistory: [],
+    priceHistoryLoading: false,
   };
 }
 
@@ -439,6 +443,26 @@ async function ensureDetailLoaded(id) {
     state.detail = { ...defaultDetail(), loading: false };
   }
   render();
+  loadPriceHistory(id);
+}
+
+// Histórico de preços (recurso do plano Controle) — carregado à parte da
+// receita em si (não bloqueia a tela principal enquanto busca) e só faz
+// sentido pra quem tem o recurso.
+async function loadPriceHistory(productId) {
+  if (!isControlePlan(state.profile)) return;
+  state.detail.priceHistoryLoading = true;
+  render();
+  try {
+    const history = await db.listPricingHistory(productId);
+    if (state.detail.productId !== productId) return;
+    state.detail.priceHistory = history;
+  } catch {
+    // Best-effort: histórico é um extra, não deve travar a tela da receita.
+  } finally {
+    if (state.detail.productId === productId) state.detail.priceHistoryLoading = false;
+    render();
+  }
 }
 
 function startWizard() {
@@ -734,6 +758,7 @@ const ICON_PATHS = {
   home: '<path d="M3 11.5 12 4l9 7.5"/><path d="M5 10v9h14v-9"/><path d="M9.5 19v-5h5v5"/>',
   box: '<path d="M3 8l9-4 9 4-9 4-9-4Z"/><path d="M3 8v8l9 4 9-4V8"/><path d="M12 12v8"/>',
   upload: '<path d="M12 15V4"/><path d="M7 9l5-5 5 5"/><path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/>',
+  download: '<path d="M12 4v11"/><path d="M7 10l5 5 5-5"/><path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/>',
   leaf: '<path d="M5 19c8 0 14-6 14-14 0 0-14-2-14 8 0 3 2 6 2 6Z"/><path d="M5 19c0-4 2-7 5-9"/>',
   wallet: '<rect x="3" y="6" width="18" height="13" rx="3"/><path d="M3 10.5h18"/><circle cx="16.5" cy="14.5" r="1.1" fill="currentColor" stroke="none"/>',
   trending: '<path d="M4 16l6-6 4 4 6-8"/><path d="M15 6h5v5"/>',
@@ -1666,7 +1691,33 @@ function renderProdutoDetalhe(id) {
       <h3>Cardápio público</h3>
       ${renderMenuFields('detail', editor)}
     </div>` : ''}
-    ${pricingResultBlock(editor)}`;
+    ${pricingResultBlock(editor)}
+    ${renderPriceHistoryPanel(editor)}`;
+}
+
+// Histórico de preços (recurso do plano Controle): um snapshot por
+// salvamento da receita (ver recordPriceHistory), do mais recente pro mais
+// antigo. Gratuito nem chega a carregar isso (ver loadPriceHistory).
+function renderPriceHistoryPanel(editor) {
+  if (!isControlePlan(state.profile)) return '';
+  return `<div class="panel">
+    <h3>Histórico de preços</h3>
+    ${editor.priceHistoryLoading ? loadingMsg() : (
+      editor.priceHistory.length === 0
+        ? '<p class="muted">Nenhum snapshot ainda — toda vez que você salvar a receita, o preço do momento fica guardado aqui.</p>'
+        : `<div class="table-scroll"><table class="data-table">
+            <thead><tr><th>Data</th><th>Custo un.</th>${(editor.priceHistory[0].tiers || []).map((t) => `<th>${escapeHtml(t.name)}</th>`).join('')}</tr></thead>
+            <tbody>
+              ${editor.priceHistory.map((entry) => `
+                <tr>
+                  <td data-label="Data">${formatDate(entry.created_at)}</td>
+                  <td data-label="Custo un.">${formatCurrency(entry.unit_cost)}</td>
+                  ${(entry.tiers || []).map((t) => `<td data-label="${escapeHtml(t.name)}">${formatCurrency(t.unitPrice)}</td>`).join('')}
+                </tr>`).join('')}
+            </tbody>
+          </table></div>`
+    )}
+  </div>`;
 }
 
 function renderWizard() {
@@ -2045,6 +2096,11 @@ function renderConfiguracoesPage() {
       <button type="button" class="ghost" data-action="open-change-password">Trocar senha</button>
     </div>
     <div class="panel">
+      <h3>Seus dados</h3>
+      <p class="muted">Baixe uma cópia de tudo que você cadastrou (ingredientes, receitas, despesas, fornecedores, clientes) em um arquivo — conforme a LGPD.</p>
+      <button type="button" class="ghost" data-action="export-user-data">${icon('download')}Exportar meus dados</button>
+    </div>
+    <div class="panel">
       <h3>Zona de risco</h3>
       <p class="form-hint">Excluir sua conta remove permanentemente seus dados (receitas, ingredientes, despesas) conforme a LGPD. Esta ação não pode ser desfeita.</p>
       <button type="button" class="danger" data-action="open-delete-account">Excluir minha conta</button>
@@ -2106,6 +2162,44 @@ function renderEmpresaPage() {
             <label>${escapeHtml(brand.label)}<input name="${brand.key}" type="url" data-company-field="${brand.key}" value="${escapeHtml(state.company[brand.key])}" placeholder="https://..." /></label>
           </div>`).join('')}
       </div>
+    </div>`;
+}
+
+// Relatório imprimível (recurso do plano Controle): lista todas as receitas
+// com custo e preços sugeridos, pensado pra virar PDF via "Imprimir" do
+// próprio navegador (Ctrl/Cmd+P -> Salvar como PDF) em vez de gerar um PDF
+// no client — sem dependência nova, funciona offline e o navegador já
+// resolve paginação/margens sozinho (ver @media print em _reports.scss).
+function renderRelatorioPage() {
+  const products = state.savedProducts;
+  const tierNames = state.profitTiers.map((t) => t.name);
+  return `
+    <div class="section-header print-hide">
+      <div><p class="eyebrow">Relatório</p><h2>Custos e preços sugeridos</h2></div>
+      <button type="button" data-action="print-report">${icon('download')}Imprimir / Salvar PDF</button>
+    </div>
+    <div class="report-page">
+      <header class="report-header">
+        <h2>${escapeHtml(state.company.name || 'Relatório de receitas')}</h2>
+        <p class="muted">Gerado em ${formatDate(new Date().toISOString())}</p>
+      </header>
+      ${products.length === 0 ? emptyState('Nenhuma receita cadastrada ainda.', false) : `
+      <table class="data-table report-table">
+        <thead><tr>
+          <th>Receita</th><th>Qnt. por forma</th><th>Custo un.</th>${tierNames.map((n) => `<th>${escapeHtml(n)}</th>`).join('')}
+        </tr></thead>
+        <tbody>
+          ${products.map((product) => {
+            const pricing = pricingForProduct(product);
+            return `<tr>
+              <td>${escapeHtml(product.name)}</td>
+              <td>${product.yield_amount} un.</td>
+              <td>${formatCurrency(pricing.unitCost)}</td>
+              ${pricing.tiers.map((t) => `<td>${formatCurrency(t.unitPrice)}</td>`).join('')}
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table>`}
     </div>`;
 }
 
@@ -2206,6 +2300,7 @@ function renderPage() {
     case 'fornecedores': return renderFornecedoresPage();
     case 'clientes': return renderClientesPage();
     case 'admin': return renderAdminPage();
+    case 'relatorio': return renderRelatorioPage();
     case 'configuracoes': return renderConfiguracoesPage();
     case 'empresa': return renderEmpresaPage();
     case 'termos': return renderTermosPage();
@@ -2232,7 +2327,7 @@ const NAV_GROUPS = [
 // como os outros grupos) porque o item "Site" só existe pra conta Vitrine e
 // aponta pro link público da própria empresa (depende do slug carregado).
 function gestaoGroup() {
-  const items = [{ route: 'clientes', label: 'Clientes' }, { route: 'empresa', label: 'Empresa' }];
+  const items = [{ route: 'clientes', label: 'Clientes' }, { route: 'empresa', label: 'Empresa' }, { route: 'relatorio', label: 'Relatório' }];
   if (isVitrinePlan(state.profile) && state.company.slug) {
     items.push({ label: 'Site', external: true, href: publicMenuUrl(state.company.slug) });
   }
@@ -3472,6 +3567,28 @@ function wizardNext() {
   render();
 }
 
+// Grava um snapshot no histórico de preços (recurso do plano Controle) toda
+// vez que uma receita é salva — best-effort: se falhar, não deve travar o
+// salvamento da receita em si (que já aconteceu com sucesso nesse ponto).
+async function recordPriceHistory(productId, productName, editor) {
+  if (!isControlePlan(state.profile)) return;
+  try {
+    const pricing = pricingFor(editor);
+    await db.insertPricingHistory(state.session.user.id, {
+      productId,
+      productName,
+      ingredientsCost: pricing.ingredientsCost,
+      expensesCost: pricing.expensesCost,
+      totalCost: pricing.totalCost,
+      unitCost: pricing.unitCost,
+      yieldAmount: pricing.yieldAmount,
+      tiers: pricing.tiers,
+    });
+  } catch {
+    // Ignorado de propósito — ver comentário acima.
+  }
+}
+
 async function handleWizardSave() {
   const ed = state.wizard;
   ed.errors = {};
@@ -3504,6 +3621,7 @@ async function handleWizardSave() {
       },
       ed.ingredients.filter((i) => i.name.trim() && !i.draft),
     );
+    await recordPriceHistory(saved.id, saved.name, ed);
     await loadUserData();
     if (photoBlocked) {
       state.statusMessage = `Receita criada sem foto: você atingiu o limite de ${limitFor(state.profile.plan, 'photos')} fotos do plano Gratuito. Faça upgrade para o Controle para anexar fotos ilimitadas.`;
@@ -3558,6 +3676,7 @@ async function handleSaveDetail() {
       },
       ed.ingredients.filter((i) => i.name.trim() && !i.draft),
     );
+    await recordPriceHistory(ed.productId, ed.productName, ed);
     ed.photoFile = null;
     state.detailSnapshot = detailSnapshotOf(ed);
     if (photoBlocked) {
@@ -3565,6 +3684,7 @@ async function handleSaveDetail() {
     }
     showSuccess('Alterações salvas.');
     await loadUserData();
+    loadPriceHistory(ed.productId);
   } catch (error) {
     state.statusMessage = `Erro ao salvar: ${error.message}`;
     render();
@@ -4012,6 +4132,41 @@ async function handleForgotPasswordSubmit(form) {
 
 function openDeleteAccountModal() {
   openModal('delete-account');
+}
+
+// "Backup": exporta os dados já carregados em memória (não faz uma query
+// nova) como um arquivo JSON baixável — direito de portabilidade de dados
+// da LGPD, disponível pra qualquer plano (não é um recurso pago).
+function handleExportUserData() {
+  const payload = {
+    exportadoEm: new Date().toISOString(),
+    empresa: {
+      nome: state.company.name,
+      cnpj: state.company.cnpj,
+      cep: state.company.cep,
+      logradouro: state.company.street,
+      bairro: state.company.neighborhood,
+      cidade: state.company.city,
+      estado: state.company.state,
+      numero: state.company.number,
+      complemento: state.company.complement,
+    },
+    ingredientes: state.savedIngredients,
+    receitas: state.savedProducts,
+    despesas: state.expenseCategories,
+    niveisDeLucro: state.profitTiers,
+    fornecedores: state.suppliers,
+    clientes: state.customers,
+  };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `sweethub-backup-${new Date().toISOString().slice(0, 10)}.json`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
 }
 
 function openConfirmDeleteIngredient(id) {
@@ -4650,6 +4805,12 @@ app.addEventListener('click', (event) => {
       break;
     case 'save-detail':
       handleSaveDetail();
+      break;
+    case 'print-report':
+      window.print();
+      break;
+    case 'export-user-data':
+      handleExportUserData();
       break;
     case 'delete-detail':
     case 'delete-product':
