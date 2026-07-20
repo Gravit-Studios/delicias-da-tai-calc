@@ -483,6 +483,15 @@
 
 .mobile-drawer-plan {
   margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.mobile-drawer-plan-label {
+  color: $ink-700;
+  font-size: $fs-sm;
+  font-weight: $fw-medium;
 }
 
 .mobile-drawer-nav {
