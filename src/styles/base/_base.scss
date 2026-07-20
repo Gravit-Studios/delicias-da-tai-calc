@@ -4,15 +4,21 @@ html {
   color: $ink-900;
   font-family: $font-body;
   scroll-behavior: smooth;
+  // Precisa estar aqui também, não só no body: o scroll horizontal
+  // indesejado (ver comentário no body abaixo) é medido contra o html
+  // (documentElement) em vários navegadores, então overflow-x: hidden só
+  // no body não bastava pra segurar.
+  overflow-x: hidden;
 }
 
 body {
   min-width: 320px;
   background: $white;
   // O banner do dashboard usa 100vw pra escapar do padding do .page (ver
-  // .banner em _banner.scss); overflow-x: hidden evita a barra de rolagem
-  // horizontal que esse truque pode gerar em navegadores com scrollbar
-  // clássica (não-overlay).
+  // .banner em _banner.scss) e o CTA final da landing usa margem lateral
+  // negativa (ver .landing-final-cta); overflow-x: hidden evita a barra de
+  // rolagem horizontal que esses truques podem gerar em navegadores com
+  // scrollbar clássica (não-overlay).
   overflow-x: hidden;
 }
 
