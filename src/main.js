@@ -1,5 +1,5 @@
 import { calculatePricing, calculateIngredientCost, formatCurrency } from './pricing.js';
-import { signUp, signIn, signOut, getSession, onAuthStateChange, changePassword, updateEmail, requestPasswordReset, confirmPasswordReset } from './auth.js';
+import { signUpWithEmailLink, signIn, signOut, getSession, onAuthStateChange, changePassword, updateEmail, requestPasswordReset, confirmPasswordReset } from './auth.js';
 import { parseRoute, navigate, onRouteChange } from './router.js';
 import { compressImageToWebp } from './imageCompression.js';
 import { lookupCep } from './cep.js';
@@ -617,8 +617,14 @@ getSession().then((session) => {
 onAuthStateChange((event, session) => {
   // O link de "esqueci minha senha" volta pro app com uma sessão válida e
   // esse evento — em vez do dashboard normal, mostra a tela de definir nova
-  // senha (ver passwordRecoveryHtml/render()).
-  if (event === 'PASSWORD_RECOVERY') state.passwordRecovery = true;
+  // senha (ver passwordRecoveryHtml/render()). O mesmo vale pra quem acabou
+  // de clicar no link de cadastro sem senha (ver signUpWithEmailLink em
+  // auth.js): a conta nasce com needs_password_setup=true nos metadados, e
+  // essa flag continua valendo em qualquer novo carregamento até a pessoa
+  // realmente definir uma senha (ver confirmPasswordReset, que a zera).
+  if (event === 'PASSWORD_RECOVERY' || session?.user?.user_metadata?.needs_password_setup) {
+    state.passwordRecovery = true;
+  }
   const hadSession = Boolean(state.session);
   state.session = session;
   if (session && !hadSession) loadUserData();
@@ -3038,11 +3044,12 @@ function authHtml() {
           <h1 class="auth-title">${isSignUp ? 'Crie sua conta' : 'Acesse sua conta'}</h1>
           <p class="auth-subtitle">${purchasePlan
             ? `Assinando o plano ${escapeHtml(purchasePlan.name)} (${formatCurrency(purchasePlan.price)}${purchasePlan.priceSuffix}). Depois de criar a conta você será levado ao pagamento.`
-            : isSignUp ? 'Grátis para sempre, sem cartão de crédito.' : 'Bem-vinda de volta.'}</p>
+            : isSignUp ? 'Grátis para sempre, sem cartão de crédito. Enviamos um link por e-mail pra você criar sua senha.' : 'Bem-vinda de volta.'}</p>
           <form data-form="auth">
             ${isSignUp ? '<label>Seu nome<input name="fullName" type="text" placeholder="Maria Silva" required /></label><label>Nome da confeitaria<input name="companyName" type="text" placeholder="Ateliê da Maria" /></label>' : ''}
             <label>E-mail<input name="email" type="email" placeholder="seuemail@exemplo.com" required /></label>
-            <label>Senha<input name="password" type="password" minlength="6" placeholder="${isSignUp ? 'Mínimo 8 caracteres' : ''}" required /></label>
+            ${!isSignUp || purchasePlan
+              ? `<label>Senha<input name="password" type="password" minlength="6" placeholder="${isSignUp ? 'Mínimo 8 caracteres' : ''}" required /></label>` : ''}
             ${isSignUp ? `
               <label class="consent-field">
                 <input name="consent" type="checkbox" required />
@@ -3070,22 +3077,24 @@ function authHtml() {
 }
 
 // Tela mostrada no lugar do app normal quando a sessão veio de um link de
-// "esqueci minha senha" (ver onAuthStateChange) — define a nova senha sem
-// pedir a atual, já que quem está aqui não lembra dela.
+// "esqueci minha senha" OU do link de cadastro sem senha (ver
+// onAuthStateChange) — define a senha sem pedir a atual, já que quem está
+// aqui nunca teve uma (cadastro novo) ou não lembra dela (recuperação).
 function passwordRecoveryHtml() {
+  const isNewAccount = Boolean(state.session?.user?.user_metadata?.needs_password_setup);
   return `
     <div class="auth-page">
       <div class="auth-form-side">
         <div class="auth-form-inner">
-          <p class="eyebrow">Nova senha</p>
-          <h1 class="auth-title">Defina uma nova senha</h1>
-          <p class="auth-subtitle">Escolha uma nova senha pra sua conta.</p>
+          <p class="eyebrow">${isNewAccount ? 'Falta pouco' : 'Nova senha'}</p>
+          <h1 class="auth-title">${isNewAccount ? 'Crie sua senha' : 'Defina uma nova senha'}</h1>
+          <p class="auth-subtitle">${isNewAccount ? 'Escolha a senha que você vai usar pra entrar daqui pra frente.' : 'Escolha uma nova senha pra sua conta.'}</p>
           <form data-form="password-recovery">
-            <label>Nova senha<input name="newPassword" type="password" minlength="6" required /></label>
-            <label>Confirmar nova senha<input name="confirmPassword" type="password" minlength="6" required /></label>
+            <label>${isNewAccount ? 'Senha' : 'Nova senha'}<input name="newPassword" type="password" minlength="6" required /></label>
+            <label>Confirmar senha<input name="confirmPassword" type="password" minlength="6" required /></label>
             ${state.passwordRecoveryError ? `<p class="auth-error">${escapeHtml(state.passwordRecoveryError)}</p>` : ''}
             <button type="submit" class="auth-submit" ${state.passwordRecoveryLoading ? 'disabled' : ''}>
-              <span>${state.passwordRecoveryLoading ? 'Salvando...' : 'Salvar nova senha'}</span>${icon('arrow')}
+              <span>${state.passwordRecoveryLoading ? 'Salvando...' : isNewAccount ? 'Criar senha' : 'Salvar nova senha'}</span>${icon('arrow')}
             </button>
           </form>
         </div>
@@ -3534,11 +3543,11 @@ async function handleAuthSubmit(form) {
         window.location.href = initPoint;
         return;
       }
-      await signUp(email, password, fullName, companyName, captchaToken);
+      await signUpWithEmailLink(email, fullName, companyName, captchaToken);
       form.reset();
       state.authLoading = false;
       navigate('#/entrar');
-      showSuccess('Conta criada! Verifique seu e-mail para confirmar o acesso e aguarde a aprovação de um administrador para começar a usar o app.', 3200);
+      showSuccess('Quase lá! Enviamos um link pro seu e-mail — clique nele pra criar sua senha. Depois, é só aguardar a aprovação de um administrador para começar a usar o app.', 3600);
       return;
     } catch (error) {
       state.authError = translateAuthError(error.message);
