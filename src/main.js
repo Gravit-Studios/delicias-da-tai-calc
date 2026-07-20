@@ -2930,7 +2930,7 @@ function landingHtml() {
 
       <section class="landing-section" id="precos">
         <div class="landing-section-inner">
-          <p class="eyebrow-pill">Planos</p>
+          <p class="eyebrow-pill landing-plans-eyebrow">Planos</p>
           <h2><span class="muted-tone">Escolha o plano</span> da sua confeitaria</h2>
           <p class="landing-section-subtitle">O plano Gratuito não tem prazo nem cartão. Cancele quando quiser.</p>
           <div class="landing-billing-toggle">
@@ -4691,9 +4691,10 @@ app.addEventListener('submit', (event) => {
 });
 
 // Links âncora da landing page (Benefícios/Como funciona/Preços) — troca o
-// scroll nativo (scroll-behavior:smooth, meio brusco/curto) por uma animação
-// mais lenta e suave. Intercepta só quando existe mesmo uma seção com esse
-// id na página atual, então não afeta nenhum outro link "#..." por engano.
+// scroll nativo (scroll-behavior:smooth, que varia de velocidade entre
+// navegadores) por uma animação própria, com duração fixa e suave.
+// Intercepta só quando existe mesmo uma seção com esse id na página atual,
+// então não afeta nenhum outro link "#..." por engano.
 // Precisa bater com $navbar-height em src/styles/abstracts/_tokens.scss.
 const NAVBAR_HEIGHT_PX = 61;
 
@@ -4701,7 +4702,7 @@ function easeInOutCubic(t) {
   return t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2;
 }
 
-function smoothScrollToId(id, duration = 1100) {
+function smoothScrollToId(id, duration = 550) {
   const target = document.getElementById(id);
   if (!target) return;
   const startY = window.scrollY;

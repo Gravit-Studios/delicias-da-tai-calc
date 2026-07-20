@@ -83,6 +83,18 @@
   letter-spacing: 0.02em;
 }
 
+// Pill "Planos" (seção de preços, fundo claro) — mesmo formato do
+// .eyebrow-pill genérico, mas na cor primária da marca com o mesmo
+// tratamento "small caps" (maiúsculas + tracking) do .eyebrow (ver
+// "COMO FUNCIONA"/"BENEFÍCIOS"). Escopado só nessa pill de propósito: as
+// outras duas usos de .eyebrow-pill ficam sobre foto/fundo escuro e já são
+// brancas ali (ver overrides mais abaixo) — não fazem parte deste ajuste.
+.landing-plans-eyebrow {
+  color: $primary-600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
 // Metade do título na cor secundária da marca, o resto no peso/cor normal —
 // mesmo efeito de "duas cores" da referência (ex.: "The Fitness Journey
 // Starts Here").
