@@ -2670,12 +2670,11 @@ const LANDING_BENEFITS = [
   { icon: 'wallet', title: 'Despesas sob controle', text: 'Rateie gás, luz, água e outras despesas fixas automaticamente entre suas receitas.' },
   { icon: 'truck', title: 'Fornecedores organizados', text: 'Guarde contatos, preços e condições dos seus fornecedores num só lugar.' },
   { icon: 'clock', title: 'Economize tempo', text: 'Preço sugerido calculado na hora, sem depender de planilha.' },
-  { icon: 'shield', title: 'Seus dados protegidos', text: 'Conforme a LGPD, com acesso só seu — você pode excluir tudo quando quiser.' },
+  { icon: 'storefront', title: 'Vitrine para seus clientes', text: 'Publique suas receitas numa vitrine online, sempre atualizada e pronta pra compartilhar.' },
 ];
 
 // Seção "Como funciona": lista editorial de passos com números grandes
-// (ver landingStepsBigSection) — a vitrine fica de fora de propósito, é
-// recurso exclusivo do plano Vitrine, não faz parte do fluxo básico de todo mundo.
+// (ver landingStepsBigSection).
 const LANDING_STEPS_BIG = [
   {
     num: '01',
@@ -2685,12 +2684,17 @@ const LANDING_STEPS_BIG = [
   {
     num: '02',
     label: 'Monte suas receitas',
-    text: 'Adicione os ingredientes usados e a quantidade de cada um — o custo de cada receita sai sozinho.',
+    text: 'Utilize as bases para saber o custo real e precificação de cada receita.',
   },
   {
     num: '03',
     label: 'Veja o preço sugerido',
-    text: 'Com a margem de lucro que você escolher — mínima, média ou máxima — calculada na hora, sem planilha.',
+    text: 'Com a margem de lucro que você escolher, calculado na hora, sem planilha.',
+  },
+  {
+    num: '04',
+    label: 'Vitrine atualizada',
+    text: 'Suas receitas sempre atualizadas na sua vitrine de forma automática.',
   },
 ];
 
@@ -2701,6 +2705,7 @@ const LANDING_STEPS_BIG_PHOTOS = [
   { src: '/assets/img/pexels-anntarazevich-6035994.webp', alt: 'Confeiteira preparando uma receita' },
   { src: '/assets/img/pexels-anntarazevich-6036020.webp', alt: 'Calda de chocolate sendo derramada' },
   { src: '/assets/img/pexels-amar-9329437.webp', alt: 'Doces prontos para servir' },
+  { src: '/assets/img/pexels-amar-9329437.webp', alt: 'Vitrine com doces prontos para venda' },
 ];
 
 // Gratuito é permanente, sem cartão (ver planStatus/planLimits.js) — por
@@ -2716,8 +2721,8 @@ const LANDING_PLANS = [
     description: 'Para quem está começando a organizar os preços.',
     note: 'Sem cartão de crédito.',
     features: [
-      'Até 20 receitas e 50 ingredientes',
-      'Ficha técnica e cálculo automático de preço sugerido',
+      'Até 10 receitas e 50 ingredientes',
+      'Cálculo automático e preço sugerido',
       'Dashboard básico',
     ],
     highlight: false,
@@ -2910,7 +2915,7 @@ function landingFeaturePanel() {
       <div class="landing-section-inner landing-feature-inner">
         <p class="eyebrow-pill landing-feature-eyebrow">Praticidade todo dia</p>
         <h2>Feito pra rotina <em>da sua confeitaria</em></h2>
-        <p class="landing-section-subtitle">Sem planilha, sem calculadora, sem achismo — só o preço certo, sempre à mão.</p>
+        <p class="landing-section-subtitle">Sem planilha, sem calculadora, sem achismo — só o preço certo e gestão inteligente, sempre à mão.</p>
         <div class="landing-feature-cards">
           ${cards.map((c, i) => `
             <div class="landing-feature-card reveal" style="--reveal-delay: ${(i * 0.1).toFixed(2)}s">
@@ -2949,7 +2954,7 @@ function landingHtml() {
       <section class="landing-section landing-section-dark" id="beneficios">
         <div class="landing-section-inner">
           <p class="eyebrow-pill">Benefícios</p>
-          <h2>Tudo que sua confeitaria precisa pra precificar certo</h2>
+          <h2>A gestão inteligente que sua confeitaria precisa</h2>
           <div class="landing-benefits-grid">
             ${LANDING_BENEFITS.map((b, index) => `
               <div class="landing-benefit-card reveal" style="--reveal-delay: ${(index * 0.08).toFixed(2)}s">

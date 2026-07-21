@@ -8,7 +8,7 @@
 // PLAN_FEATURES documenta o modelo alvo, mas ainda não é aplicado em lugar
 // nenhum — relatórios/PDF/histórico de preços não existem no app hoje.
 export const PLAN_LIMITS = {
-  gratuito: { recipes: 20, ingredients: 50, clients: 1, suppliers: 1, categories: 5, photos: 10 },
+  gratuito: { recipes: 10, ingredients: 50, clients: 1, suppliers: 1, categories: 5, photos: 10 },
   controle: { recipes: Infinity, ingredients: Infinity, clients: Infinity, suppliers: Infinity, categories: Infinity, photos: Infinity },
   vitrine: { recipes: Infinity, ingredients: Infinity, clients: Infinity, suppliers: Infinity, categories: Infinity, photos: Infinity },
 };
