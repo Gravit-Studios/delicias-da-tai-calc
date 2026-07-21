@@ -271,6 +271,7 @@ create table if not exists public.products (
   -- Cardápio público (recurso do plano Vitrine): campos exibidos só quando
   -- published = true e a conta é 'vitrine' (ver views public_* mais abaixo).
   category text default '',
+  flavor text default '',
   description text default '',
   menu_price numeric not null default 0,
   published boolean not null default false,
@@ -351,9 +352,12 @@ create or replace view public.public_companies
   from public.profiles
   where plan = 'vitrine';
 
+-- flavor vem por último na lista (não junto dos outros campos do cardápio,
+-- mais acima) de propósito: create or replace view não permite mudar a
+-- ordem/nome de colunas já existentes, só acrescentar no final.
 create or replace view public.public_products
   with (security_invoker = true) as
-  select pr.id, pr.user_id, pr.name, pr.description, pr.category, pr.menu_price, pr.photo_url, pr.yield_amount
+  select pr.id, pr.user_id, pr.name, pr.description, pr.category, pr.menu_price, pr.photo_url, pr.yield_amount, pr.flavor
   from public.products pr
   join public.profiles p on p.id = pr.user_id
   where pr.published = true and p.plan = 'vitrine';
@@ -378,7 +382,7 @@ create policy "Anon vê produtos publicados de contas vitrine (cardápio públic
   );
 
 grant select (id, company_name, logo_url, slug, ifood_url, link_99_url, keeta_url) on public.profiles to anon;
-grant select (id, user_id, name, description, category, menu_price, photo_url, yield_amount) on public.products to anon;
+grant select (id, user_id, name, description, flavor, category, menu_price, photo_url, yield_amount) on public.products to anon;
 
 -- =========================================================
 -- Limites do plano Gratuito (ver src/planLimits.js) aplicados no banco —

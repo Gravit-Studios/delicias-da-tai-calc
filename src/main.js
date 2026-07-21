@@ -178,6 +178,7 @@ function defaultDetail() {
     photoPreviewUrl: '',
     // Campos do cardápio público (recurso do plano Vitrine) — ver renderMenuFields.
     menuCategory: '',
+    menuFlavor: '',
     menuDescription: '',
     menuPrice: '',
     // Nome do nível de lucro escolhido como preço no cardápio, ou 'custom'
@@ -426,6 +427,7 @@ async function ensureDetailLoaded(id) {
       photoFile: null,
       photoPreviewUrl: '',
       menuCategory: product.category || '',
+      menuFlavor: product.flavor || '',
       menuDescription: product.description || '',
       menuPrice: product.menu_price ? toDecimalString(product.menu_price) : '',
       menuPriceTier: '',
@@ -947,8 +949,8 @@ function menuCategoryField(editorKey, editor) {
     </label>`;
 }
 
-// Campos do cardápio público (recurso do plano Vitrine): categoria, descrição,
-// preço de exibição e o interruptor de publicação por receita.
+// Campos do cardápio público (recurso do plano Vitrine): categoria, sabor,
+// descrição, preço de exibição e o interruptor de publicação por receita.
 function renderMenuFields(editorKey, editor) {
   const pricing = pricingFor(editor);
   const isCustomPrice = editor.menuPriceTier === 'custom' || pricing.tiers.length === 0;
@@ -968,6 +970,7 @@ function renderMenuFields(editorKey, editor) {
       <span class="prefix">R$</span>
       <input inputmode="decimal" placeholder="0,00" data-editor="${editorKey}" data-field="menuPrice" value="${escapeHtml(editor.menuPrice)}" />
     </div>` : ''}
+    <label style="margin-top:16px;">Sabor<input type="text" data-editor="${editorKey}" data-field="menuFlavor" placeholder="Ex.: Tradicional recheado com doce de leite" value="${escapeHtml(editor.menuFlavor)}" /></label>
     <label style="margin-top:16px;">Descrição<textarea data-editor="${editorKey}" data-field="menuDescription" rows="3" placeholder="Uma breve descrição que aparece na página do produto">${escapeHtml(editor.menuDescription)}</textarea></label>
     <label class="consent-field consent-field-inline" style="margin-top:16px;">
       <input type="checkbox" data-action="toggle-menu-published" ${editor.menuPublished ? 'checked' : ''} />
@@ -3353,8 +3356,9 @@ function renderPublicMenuList(menu) {
     .filter((l) => isHttpUrl(l.url));
   const deliveryLinksHtml = links.length ? `
     <div class="menu-item-links">
-      <div class="delivery-shortcuts">
-        ${links.map((l) => `<a class="delivery-shortcut delivery-shortcut-plain" href="${escapeHtml(l.url)}" target="_blank" rel="noopener noreferrer">${deliveryBadge(l.brand, 'delivery-badge-sm')}<span>${escapeHtml(l.brand.label)}</span></a>`).join('')}
+      <span class="menu-item-links-label">Peça pelo app:</span>
+      <div class="delivery-shortcuts delivery-shortcuts-compact">
+        ${links.map((l) => `<a class="delivery-shortcut delivery-shortcut-plain" href="${escapeHtml(l.url)}" target="_blank" rel="noopener noreferrer" aria-label="Pedir pelo ${escapeHtml(l.brand.label)}">${deliveryBadge(l.brand, 'delivery-badge-sm')}</a>`).join('')}
       </div>
     </div>` : '';
   return `
@@ -3378,7 +3382,8 @@ function renderPublicMenuList(menu) {
                       : '<span class="menu-item-photo menu-item-photo-empty"></span>'}
                     <div class="menu-item-info">
                       <div class="menu-item-top"><strong>${escapeHtml(product.name)}</strong><span class="menu-item-price">${formatCurrency(toNumberSafe(product.menu_price))}</span></div>
-                      ${product.description ? `<p>${escapeHtml(product.description)}</p>` : ''}
+                      ${product.flavor ? `<p class="menu-item-flavor">${escapeHtml(product.flavor)}</p>` : ''}
+                      ${product.description ? `<p class="menu-item-description">${escapeHtml(product.description)}</p>` : ''}
                       ${deliveryLinksHtml}
                     </div>
                   </div>`).join('')}
@@ -3860,6 +3865,7 @@ async function handleSaveDetail() {
         yield_amount: Math.max(1, Math.floor(toNumberSafe(ed.yieldAmount) || 1)),
         photo_url: photoUrl,
         category: ed.menuCategory || '',
+        flavor: ed.menuFlavor || '',
         description: ed.menuDescription || '',
         menu_price: toNumberSafe(ed.menuPrice),
         published: ed.menuPublished,

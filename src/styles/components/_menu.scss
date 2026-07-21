@@ -138,16 +138,21 @@
 .menu-item {
   display: flex;
   align-items: flex-start;
-  gap: 16px;
-  padding: 20px 0;
+  gap: 24px;
+  padding: 24px 0;
 }
 
 .menu-item-photo {
-  width: 104px;
-  height: 104px;
+  width: 176px;
+  height: 176px;
   border-radius: $radius-md;
   object-fit: cover;
   flex-shrink: 0;
+
+  @include respond-down($bp-tablet) {
+    width: 96px;
+    height: 96px;
+  }
 }
 
 .menu-item-photo-empty {
@@ -176,17 +181,45 @@
 .menu-item-info {
   flex: 1;
   min-width: 0;
+}
 
-  p {
-    margin: 8px 0 0;
-    color: $ink-400;
-    font-size: $fs-sm;
-    line-height: $lh-body;
-  }
+// Sabor: mesma cor de texto do título, mas peso normal — um subtítulo
+// direto, diferente da descrição (mais apagada, ver .menu-item-description
+// abaixo) que só complementa com detalhes (peso aproximado, ingredientes).
+.menu-item-flavor {
+  margin: 8px 0 0;
+  color: $ink-900;
+  font-size: 1rem;
+  line-height: $lh-body;
+}
+
+.menu-item-description {
+  margin: 8px 0 0;
+  color: $ink-400;
+  font-size: $fs-sm;
+  line-height: $lh-body;
 }
 
 .menu-item-links {
-  margin-top: 12px;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid $border;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.menu-item-links-label {
+  color: $ink-400;
+  font-size: $fs-sm;
+}
+
+// Só os selos, sem o texto do nome do app ao lado (ver .delivery-shortcut-
+// plain em _highlight-cards.scss) — mais compacto que o gap padrão dos
+// atalhos da página Empresa.
+.delivery-shortcuts-compact {
+  gap: 6px;
+  margin-bottom: 0;
 }
 
 .menu-item-top {
@@ -198,7 +231,7 @@
   strong {
     font-family: $font-heading;
     font-weight: $fw-black;
-    font-size: 1.05rem;
+    font-size: 1.7rem;
     color: $ink-900;
   }
 }
@@ -208,7 +241,7 @@
   font-family: $font-heading;
   font-weight: $fw-bold;
   color: $ink-900;
-  font-size: 1rem;
+  font-size: 1.7rem;
 }
 
 .menu-loading {
