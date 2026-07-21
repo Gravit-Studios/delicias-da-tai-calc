@@ -640,9 +640,54 @@ async function handleScheduleDowngrade(plan) {
 
 onRouteChange(handleRouteChange);
 
+// ---------------- Logout automático por inatividade ----------------
+// Regra de segurança: sessão aberta indefinidamente é risco (computador
+// compartilhado, alguém se afasta e esquece a tela logada) — desloga
+// sozinho depois de 30 min sem nenhuma interação. O "relógio" é o
+// timestamp da última atividade salvo no localStorage, não um timer em
+// memória: assim também cobre a aba ficar em segundo plano/o notebook
+// fechado por horas e só "acordar" bem depois — o timer em memória não
+// teria rodado enquanto isso, mas o timestamp salvo continua valendo.
+const IDLE_TIMEOUT_MS = 30 * 60 * 1000;
+const IDLE_LAST_ACTIVITY_KEY = 'sweethub:lastActivity';
+const IDLE_CHECK_INTERVAL_MS = 30 * 1000;
+let idleLastMarkAt = 0;
+
+function markActivity() {
+  const now = Date.now();
+  // Só grava no localStorage a cada 5s no máximo — mousemove/scroll disparam
+  // dezenas de vezes por segundo, e o timestamp não precisa dessa precisão.
+  if (now - idleLastMarkAt < 5000) return;
+  idleLastMarkAt = now;
+  localStorage.setItem(IDLE_LAST_ACTIVITY_KEY, String(now));
+}
+
+function checkIdleTimeout() {
+  if (!state.session) return;
+  const last = Number(localStorage.getItem(IDLE_LAST_ACTIVITY_KEY)) || Date.now();
+  if (Date.now() - last >= IDLE_TIMEOUT_MS) signOut();
+}
+
+['mousedown', 'keydown', 'scroll', 'touchstart'].forEach((evt) => {
+  window.addEventListener(evt, markActivity, { passive: true });
+});
+// Ao voltar pra aba depois de um tempo fora, checa na hora em vez de
+// esperar o próximo tick do interval — pode ter passado horas em segundo
+// plano (intervals de aba oculta são jogados pro browser, não são
+// confiáveis).
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState !== 'visible') return;
+  markActivity();
+  checkIdleTimeout();
+});
+setInterval(checkIdleTimeout, IDLE_CHECK_INTERVAL_MS);
+
 getSession().then((session) => {
   state.session = session;
-  if (session) loadUserData();
+  if (session) {
+    loadUserData();
+    markActivity();
+  }
   handleRouteChange(parseRoute());
 });
 
@@ -658,7 +703,10 @@ onAuthStateChange((event, session) => {
   }
   const hadSession = Boolean(state.session);
   state.session = session;
-  if (session && !hadSession) loadUserData();
+  if (session && !hadSession) {
+    loadUserData();
+    markActivity();
+  }
   if (!session) {
     state.savedIngredients = [];
     state.savedProducts = [];
