@@ -259,6 +259,10 @@ const state = {
   successModal: '',
   activeModal: null,
   openCombobox: null,
+  // Combobox de categoria do cardápio (ver menuCategoryField) — só um campo
+  // por vez em tela (não é uma lista de linhas como o combobox de
+  // ingrediente), por isso é só um booleano em vez de guardar um rowId.
+  openMenuCategoryCombobox: false,
 
   admin: { users: [], loading: false, error: '' },
 
@@ -893,6 +897,41 @@ function basicFields(editorKey, editor) {
   </div>`;
 }
 
+// Categorias já usadas em qualquer receita do usuário (ordenadas, sem
+// repetição) — sugestões do combobox de categoria (ver menuCategoryField),
+// pra manter o cardápio público organizado em vez de cada receita nova
+// inventar uma categoria escrita de um jeito ligeiramente diferente.
+function existingMenuCategories() {
+  const set = new Set();
+  state.savedProducts.forEach((p) => {
+    const category = (p.category || '').trim();
+    if (category) set.add(category);
+  });
+  return Array.from(set).sort((a, b) => a.localeCompare(b, 'pt-BR'));
+}
+
+// Combobox de categoria: mesmo padrão do combobox de ingrediente
+// (ingredientNameCell), mas pra um único campo em vez de uma linha de
+// tabela — permite escolher uma categoria já usada em outra receita ou
+// digitar uma nova. Obrigatório pra manter o cardápio público organizado.
+function menuCategoryField(editorKey, editor) {
+  const query = editor.menuCategory.trim().toLowerCase();
+  const categories = existingMenuCategories();
+  const options = query ? categories.filter((c) => c.toLowerCase().includes(query)) : categories;
+  const error = editor.errors?.menuCategory;
+  return `
+    <label>Categoria
+      <div class="combobox">
+        <input required aria-label="Categoria" autocomplete="off" class="${error ? 'is-invalid' : ''}" placeholder="Ex.: Bolos, Doces, Salgados" data-editor="${editorKey}" data-field="menuCategory" data-menu-category-combobox="true" value="${escapeHtml(editor.menuCategory)}" />
+        ${state.openMenuCategoryCombobox && options.length ? `
+          <div class="combobox-list">
+            ${options.map((c) => `<button type="button" class="combobox-option" data-action="select-menu-category-option" data-editor="${editorKey}" data-category="${escapeHtml(c)}">${escapeHtml(c)}</button>`).join('')}
+          </div>` : ''}
+      </div>
+      ${error ? `<p class="form-error">${escapeHtml(error)}</p>` : ''}
+    </label>`;
+}
+
 // Campos do cardápio público (recurso do plano Vitrine): categoria, descrição,
 // preço de exibição e o interruptor de publicação por receita.
 function renderMenuFields(editorKey, editor) {
@@ -901,7 +940,7 @@ function renderMenuFields(editorKey, editor) {
   return `
     <p class="muted">Preencha e ative "Publicar no cardápio" para essa receita aparecer no seu cardápio online (ver link na página Empresa).</p>
     <div class="field-grid">
-      <label>Categoria<input data-editor="${editorKey}" data-field="menuCategory" value="${escapeHtml(editor.menuCategory)}" placeholder="Ex.: Bolos, Doces, Salgados" /></label>
+      ${menuCategoryField(editorKey, editor)}
       <label>Preço no cardápio
         <select data-editor="${editorKey}" data-field="menuPriceTier">
           ${pricing.tiers.map((tier) => `<option value="${escapeHtml(tier.name)}" ${editor.menuPriceTier === tier.name ? 'selected' : ''}>${escapeHtml(tier.name)} — ${formatCurrency(tier.unitPrice)}</option>`).join('')}
@@ -3682,6 +3721,14 @@ async function handleSaveDetail() {
     render();
     return;
   }
+  // Categoria é obrigatória pra manter o cardápio público organizado — só
+  // barra o salvamento quando a receita está indo pro ar (menuPublished);
+  // uma receita ainda não publicada pode ficar sem categoria à toa.
+  if (ed.menuPublished && !ed.menuCategory.trim()) {
+    ed.errors.menuCategory = 'Escolha ou digite uma categoria antes de publicar no cardápio.';
+    render();
+    return;
+  }
   try {
     // Só conta como uma foto nova pro limite se a receita ainda não tinha
     // foto — trocar a foto de uma receita que já tem uma não aumenta a
@@ -4609,6 +4656,7 @@ app.addEventListener('input', (event) => {
   }
   if (target.dataset.field) {
     getEditor(target.dataset.editor)[target.dataset.field] = target.value;
+    if (target.dataset.field === 'menuCategory') state.openMenuCategoryCombobox = true;
     render();
     return;
   }
@@ -4665,6 +4713,16 @@ app.addEventListener('focus', (event) => {
   const rowId = target.closest('[data-ingredient]')?.dataset.ingredient;
   if (rowId && state.openCombobox !== rowId) {
     state.openCombobox = rowId;
+    render();
+  }
+}, true);
+
+// Abre o combobox de categoria do cardápio ao focar no campo.
+app.addEventListener('focus', (event) => {
+  const target = event.target;
+  if (!target.dataset || !target.dataset.menuCategoryCombobox) return;
+  if (!state.openMenuCategoryCombobox) {
+    state.openMenuCategoryCombobox = true;
     render();
   }
 }, true);
@@ -5054,6 +5112,14 @@ app.addEventListener('click', (event) => {
       render();
       break;
     }
+    case 'select-menu-category-option': {
+      const ed = getEditor(editorKey);
+      ed.menuCategory = el.dataset.category;
+      if (ed.errors) ed.errors.menuCategory = '';
+      state.openMenuCategoryCombobox = false;
+      render();
+      break;
+    }
     default:
       break;
   }
@@ -5081,6 +5147,10 @@ app.addEventListener('click', (event) => {
   }
   if (state.openCombobox && !event.target.closest('.combobox')) {
     state.openCombobox = null;
+    render();
+  }
+  if (state.openMenuCategoryCombobox && !event.target.closest('.combobox')) {
+    state.openMenuCategoryCombobox = false;
     render();
   }
   if (state.openIngredientFilterColumn && !event.target.closest('.th-filter')) {
