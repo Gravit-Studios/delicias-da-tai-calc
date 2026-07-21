@@ -884,6 +884,18 @@ function mobileSaveBar(saveAction, isDirty) {
   return `<div class="mobile-save-bar"><button type="button" data-action="${saveAction}">Salvar alterações</button></div>`;
 }
 
+// Barra fixa da página de detalhe da receita: Voltar, Excluir e Salvar
+// sempre visíveis no mobile (ver .detail-mobile-actions), diferente do
+// mobileSaveBar acima — Voltar/Excluir fazem sentido mesmo sem nada pra
+// salvar, então a barra não pode sumir só porque isDirty é falso.
+function detailMobileActionBar(id, editor, isDirty) {
+  return `<div class="mobile-save-bar detail-mobile-actions">
+    <button type="button" class="ghost" data-action="goto" data-route="produtos">Voltar</button>
+    <button type="button" class="danger" data-action="delete-detail" data-id="${id}" data-name="${escapeHtml(editor.productName)}">Excluir receita</button>
+    <button type="button" class="save-action-btn" data-action="save-detail" ${isDirty ? '' : 'disabled'}>Salvar alterações</button>
+  </div>`;
+}
+
 // Padrão de campo do projeto: label acima do input, erro (se houver) abaixo.
 function fieldFor(editorKey, key, label, value, mode = 'text', error = '') {
   return `<label>${label}<input class="${error ? 'is-invalid' : ''}" data-editor="${editorKey}" data-field="${key}" inputmode="${mode}" value="${escapeHtml(value)}" />${error ? `<p class="form-error">${escapeHtml(error)}</p>` : ''}</label>`;
@@ -1712,7 +1724,7 @@ function renderProdutoDetalhe(id) {
         <button type="button" class="save-action-btn" data-action="save-detail" ${isDirty ? '' : 'disabled'}>Salvar alterações</button>
       </div>
     </div>
-    ${mobileSaveBar('save-detail', isDirty)}
+    ${detailMobileActionBar(id, editor, isDirty)}
     ${statusBox()}
     <div class="panel">
       <h3>Foto da receita</h3>

@@ -38,12 +38,11 @@
   gap: 8px;
   flex-wrap: wrap;
 
+  // No mobile esses botões somem daqui — ver .detail-mobile-actions, a
+  // barra fixa no rodapé que os substitui (sempre visível, sem precisar
+  // rolar até o topo da página).
   @include respond-down($bp-tablet) {
-    flex-direction: column;
-
-    button {
-      width: 100%;
-    }
+    display: none;
   }
 }
 
@@ -90,6 +89,27 @@
     button {
       width: 100%;
     }
+  }
+}
+
+// Barra fixa da página de detalhe da receita (Voltar/Excluir/Salvar) — ao
+// contrário do .mobile-save-bar genérico acima (só aparece com alteração
+// pendente), essa fica sempre visível no mobile: Voltar e Excluir valem a
+// qualquer momento, não só quando há algo pra salvar (ver
+// detailMobileActionBar em main.js).
+.detail-mobile-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+// A barra de 3 botões é mais alta que o .mobile-save-bar genérico (1 botão
+// só) — sem esse respiro a mesma barra cobria o final do conteúdo (ex.: o
+// painel de Resultado/preços) permanentemente, já que agora ela fica
+// sempre visível em vez de só aparecer quando há alteração pendente.
+@include respond-down($bp-tablet) {
+  .page:has(.detail-mobile-actions) {
+    padding-bottom: 190px;
   }
 }
 
