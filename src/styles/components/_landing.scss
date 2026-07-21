@@ -19,6 +19,55 @@
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
   border-bottom: 1px solid rgba(255, 255, 255, 0.25);
+  transition: background 0.25s ease, border-color 0.25s ease;
+
+  .landing-nav-links a {
+    color: $white;
+
+    &:hover {
+      color: $white;
+      opacity: 0.8;
+    }
+  }
+
+  .text-link {
+    color: rgba(var(--white-rgb), 0.85);
+
+    &:hover {
+      color: $white;
+    }
+  }
+
+  // Ao rolar (ver updateLandingNavScrolled em main.js), volta a ficar sólido
+  // e com o texto na cor padrão — só fica transparente/translúcido com texto
+  // branco enquanto está no topo, sobre a foto do hero.
+  &.is-scrolled {
+    // Enquanto no topo, position: absolute deixa a foto do hero aparecer por
+    // trás (ver comentário da classe base); ao rolar, precisa voltar a ser
+    // sticky (como o navbar normal) pra não rolar junto com a página e sumir.
+    position: sticky;
+    background: $surface;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    border-bottom: 1px solid $border;
+
+    .landing-nav-links a {
+      color: $ink-700;
+
+      &:hover {
+        color: $primary-600;
+        opacity: 1;
+      }
+    }
+
+    .text-link {
+      color: $ink-400;
+
+      &:hover {
+        color: $ink-900;
+      }
+    }
+  }
 }
 
 .landing-nav-links {

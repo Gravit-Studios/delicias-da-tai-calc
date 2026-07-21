@@ -3412,6 +3412,7 @@ function render() {
   if (isNewPage) app.firstElementChild?.classList.add('page-enter');
   setupScrollReveal();
   hydrateInlineSvgs();
+  updateLandingNavScrolled();
   renderCaptchaWidgets();
 }
 
@@ -3577,11 +3578,23 @@ function updateHeaderVisibility() {
   lastHeaderScrollY = currentY;
 }
 
+// Navbar transparente/com blur só enquanto está no topo, sobre a foto do
+// hero (ver .landing-nav-overlay) — ao rolar, vira sólido branco com o texto
+// na cor padrão, como o navbar normal (ver is-scrolled em _landing.scss).
+const NAV_OVERLAY_SCROLL_THRESHOLD = 40;
+
+function updateLandingNavScrolled() {
+  const nav = app.querySelector('.landing-nav-overlay');
+  if (!nav) return;
+  nav.classList.toggle('is-scrolled', window.scrollY > NAV_OVERLAY_SCROLL_THRESHOLD);
+}
+
 window.addEventListener('scroll', () => {
   if (headerScrollRaf) return;
   headerScrollRaf = requestAnimationFrame(() => {
     headerScrollRaf = null;
     updateHeaderVisibility();
+    updateLandingNavScrolled();
   });
 }, { passive: true });
 
