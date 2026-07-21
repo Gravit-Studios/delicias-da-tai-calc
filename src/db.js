@@ -120,7 +120,25 @@ export async function getPublicProducts(userId) {
     .eq('user_id', userId)
     .order('category', { ascending: true });
   if (error) throw error;
-  return data;
+
+  // Fotos extras da galeria (ver product_photos/public_product_photos):
+  // uma consulta só pra todos os produtos da loja, agrupada em memória —
+  // evita N+1 consultas (uma por produto) na página do cardápio público.
+  const productIds = data.map((product) => product.id);
+  if (productIds.length === 0) return data.map((product) => ({ ...product, photos: [] }));
+  const { data: photos, error: photosError } = await supabase
+    .from('public_product_photos')
+    .select('*')
+    .in('product_id', productIds)
+    .order('position', { ascending: true });
+  if (photosError) throw photosError;
+  const photosByProduct = new Map();
+  photos.forEach((photo) => {
+    const list = photosByProduct.get(photo.product_id) || [];
+    list.push(photo.photo_url);
+    photosByProduct.set(photo.product_id, list);
+  });
+  return data.map((product) => ({ ...product, photos: photosByProduct.get(product.id) || [] }));
 }
 
 // ---------- Administração de usuários (via Edge Function, service role no servidor) ----------
@@ -277,7 +295,27 @@ export async function loadProductWithIngredients(productId) {
     .order('position', { ascending: true });
   if (itemsError) throw itemsError;
 
-  return { product, items };
+  const { data: photos, error: photosError } = await supabase
+    .from('product_photos')
+    .select('*')
+    .eq('product_id', productId)
+    .order('position', { ascending: true });
+  if (photosError) throw photosError;
+
+  return { product, items, photos };
+}
+
+// Substitui as fotos extras da vitrine (galeria) do produto pelas atuais —
+// mesmo padrão de "apaga tudo e insere de novo" já usado pra ingredientes em
+// saveProduct, mais simples que calcular um diff de quem entrou/saiu/mudou
+// de posição.
+export async function saveProductPhotos(userId, productId, photoUrls) {
+  const { error: deleteError } = await supabase.from('product_photos').delete().eq('product_id', productId);
+  if (deleteError) throw deleteError;
+  if (photoUrls.length === 0) return;
+  const rows = photoUrls.map((photo_url, index) => ({ user_id: userId, product_id: productId, photo_url, position: index }));
+  const { error: insertError } = await supabase.from('product_photos').insert(rows);
+  if (insertError) throw insertError;
 }
 
 export async function saveProduct(userId, productId, productData, ingredients) {

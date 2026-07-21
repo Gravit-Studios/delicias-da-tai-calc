@@ -142,9 +142,16 @@
   padding: 24px 0;
 }
 
+.menu-item-media {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
 .menu-item-photo {
-  width: 176px;
-  height: 176px;
+  width: 152px;
+  height: 152px;
   border-radius: $radius-md;
   object-fit: cover;
   flex-shrink: 0;
@@ -152,6 +159,43 @@
   @include respond-down($bp-tablet) {
     width: 96px;
     height: 96px;
+  }
+}
+
+// Fotos extras da galeria (até MENU_PHOTOS_MAX, ver main.js) — miniaturas
+// pequenas embaixo da foto principal, mesmo botão-lightbox dela.
+.menu-item-gallery {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  width: 152px;
+
+  @include respond-down($bp-tablet) {
+    width: 96px;
+  }
+}
+
+.menu-item-gallery-thumb-btn {
+  padding: 0;
+  border-radius: $radius-sm;
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+
+  &:hover {
+    box-shadow: none;
+    transform: none;
+
+    img {
+      filter: brightness(0.92);
+    }
+  }
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: $radius-sm;
   }
 }
 

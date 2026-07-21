@@ -109,3 +109,80 @@
     font-size: 0.85rem;
   }
 }
+
+// Galeria de fotos extras da vitrine (renderMenuFields/menuPhotoGallery em
+// main.js) — miniaturas quadradas num grid, cada uma com seu botão de
+// remover; o "ladrilho" tracejado no final é o gatilho pra adicionar mais
+// (some quando atinge MENU_PHOTOS_MAX).
+.menu-photo-gallery {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.menu-photo-gallery-item {
+  position: relative;
+  width: 88px;
+  height: 88px;
+  flex-shrink: 0;
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: $radius-md;
+    border: 1px solid $border;
+  }
+}
+
+.menu-photo-remove {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: $danger-500;
+  color: $white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid $surface;
+  padding: 0;
+
+  &:hover {
+    box-shadow: none;
+    transform: none;
+    filter: brightness(0.95);
+  }
+
+  .icon {
+    width: 12px;
+    height: 12px;
+  }
+}
+
+.menu-photo-gallery-add {
+  width: 88px;
+  height: 88px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1.5px dashed $border;
+  border-radius: $radius-md;
+  color: $ink-400;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+
+  &:hover {
+    border-color: $primary-400;
+    background: rgba(var(--primary-500-rgb), 0.04);
+  }
+
+  .icon {
+    width: 22px;
+    height: 22px;
+  }
+}

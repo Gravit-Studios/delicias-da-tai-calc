@@ -1,7 +1,7 @@
 import { calculatePricing, calculateIngredientCost, formatCurrency } from './pricing.js';
 import { signUp, signIn, signOut, getSession, onAuthStateChange, changePassword, updateEmail, requestPasswordReset, confirmPasswordReset } from './auth.js';
 import { parseRoute, navigate, onRouteChange } from './router.js';
-import { compressImageToWebp } from './imageCompression.js';
+import { compressImageToWebp, compressImageToSquareWebp } from './imageCompression.js';
 import { lookupCep } from './cep.js';
 import * as db from './db.js';
 import { limitFor, canUse } from './planLimits.js';
@@ -181,6 +181,11 @@ function defaultDetail() {
     menuFlavor: '',
     menuDescription: '',
     menuPrice: '',
+    // Fotos extras da vitrine (até MENU_PHOTOS_MAX), além da foto principal
+    // (photoUrl/photoFile acima) — cada item é { id, url, file? }: id/url vêm
+    // do banco quando já salva, file é o File novo (ainda não enviado) de
+    // uma foto recém-adicionada nesta sessão de edição.
+    menuPhotos: [],
     // Nome do nível de lucro escolhido como preço no cardápio, ou 'custom'
     // quando o usuário prefere digitar um valor à parte dos sugeridos.
     menuPriceTier: '',
@@ -408,7 +413,7 @@ async function ensureDetailLoaded(id) {
   state.detail = { ...defaultDetail(), loading: true };
   render();
   try {
-    const { product, items } = await db.loadProductWithIngredients(id);
+    const { product, items, photos } = await db.loadProductWithIngredients(id);
     state.detail = {
       ...defaultDetail(),
       loading: false,
@@ -431,6 +436,7 @@ async function ensureDetailLoaded(id) {
       menuDescription: product.description || '',
       menuPrice: product.menu_price ? toDecimalString(product.menu_price) : '',
       menuPriceTier: '',
+      menuPhotos: photos.map((photo) => ({ id: photo.id, url: photo.photo_url, file: null })),
       menuPublished: Boolean(product.published),
       errors: {},
     };
@@ -730,9 +736,11 @@ function detailSnapshotOf(editor) {
     ingredients: editor.ingredients,
     photoChanged: Boolean(editor.photoFile),
     menuCategory: editor.menuCategory,
+    menuFlavor: editor.menuFlavor,
     menuDescription: editor.menuDescription,
     menuPrice: editor.menuPrice,
     menuPriceTier: editor.menuPriceTier,
+    menuPhotos: editor.menuPhotos.map((p) => ({ id: p.id, hasFile: Boolean(p.file) })),
     menuPublished: editor.menuPublished,
   });
 }
@@ -972,10 +980,38 @@ function renderMenuFields(editorKey, editor) {
     </div>` : ''}
     <label style="margin-top:16px;">Sabor<input type="text" data-editor="${editorKey}" data-field="menuFlavor" placeholder="Ex.: Tradicional recheado com doce de leite" value="${escapeHtml(editor.menuFlavor)}" /></label>
     <label style="margin-top:16px;">Descrição<textarea data-editor="${editorKey}" data-field="menuDescription" rows="3" placeholder="Uma breve descrição que aparece na página do produto">${escapeHtml(editor.menuDescription)}</textarea></label>
+    <div style="margin-top:16px;">
+      <label>Mais fotos da vitrine</label>
+      ${menuPhotoGallery(editorKey, editor)}
+    </div>
     <label class="consent-field consent-field-inline" style="margin-top:16px;">
       <input type="checkbox" data-action="toggle-menu-published" ${editor.menuPublished ? 'checked' : ''} />
       <span>Publicar no cardápio</span>
     </label>`;
+}
+
+// Além da foto principal (photoUploadField, usada em tudo mais no app), a
+// vitrine aceita até MENU_PHOTOS_MAX fotos extras — mais ângulos/variações
+// do doce. Cada miniatura tem seu próprio botão de remover; um único input
+// de arquivo (oculto) cobre o "ladrilho" de adicionar.
+const MENU_PHOTOS_MAX = 5;
+
+function menuPhotoGallery(editorKey, editor) {
+  const canAddMore = editor.menuPhotos.length < MENU_PHOTOS_MAX;
+  return `
+    <div class="menu-photo-gallery">
+      ${editor.menuPhotos.map((photo, index) => `
+        <div class="menu-photo-gallery-item">
+          <img src="${escapeHtml(photo.url)}" alt="" />
+          <button type="button" class="menu-photo-remove" data-action="remove-menu-photo" data-editor="${editorKey}" data-index="${index}" aria-label="Remover foto">${icon('close')}</button>
+        </div>`).join('')}
+      ${canAddMore ? `
+        <label class="menu-photo-gallery-add">
+          <input type="file" accept="image/*" data-menu-photo-input="${editorKey}" hidden />
+          ${icon('plus')}
+        </label>` : ''}
+    </div>
+    <p class="muted" style="margin-top:8px;">Até ${MENU_PHOTOS_MAX} fotos. ${editor.menuPhotos.length}/${MENU_PHOTOS_MAX} enviadas.</p>`;
 }
 
 // Lê a quantidade comprada da embalagem e define o teto permitido para a
@@ -3377,9 +3413,15 @@ function renderPublicMenuList(menu) {
                 <h2>${escapeHtml(cat)}</h2>
                 ${products.filter((p) => (p.category?.trim() || 'Cardápio') === cat).map((product) => `
                   <div class="menu-item">
-                    ${product.photo_url
-                      ? `<button type="button" class="menu-item-photo-btn" data-action="open-menu-lightbox" data-url="${escapeHtml(product.photo_url)}" aria-label="Ampliar foto de ${escapeHtml(product.name)}"><img src="${escapeHtml(product.photo_url)}" alt="" class="menu-item-photo" /></button>`
-                      : '<span class="menu-item-photo menu-item-photo-empty"></span>'}
+                    <div class="menu-item-media">
+                      ${product.photo_url
+                        ? `<button type="button" class="menu-item-photo-btn" data-action="open-menu-lightbox" data-url="${escapeHtml(product.photo_url)}" aria-label="Ampliar foto de ${escapeHtml(product.name)}"><img src="${escapeHtml(product.photo_url)}" alt="" class="menu-item-photo" /></button>`
+                        : '<span class="menu-item-photo menu-item-photo-empty"></span>'}
+                      ${product.photos?.length ? `
+                        <div class="menu-item-gallery">
+                          ${product.photos.map((url) => `<button type="button" class="menu-item-gallery-thumb-btn" data-action="open-menu-lightbox" data-url="${escapeHtml(url)}" aria-label="Ampliar foto de ${escapeHtml(product.name)}"><img src="${escapeHtml(url)}" alt="" /></button>`).join('')}
+                        </div>` : ''}
+                    </div>
                     <div class="menu-item-info">
                       <div class="menu-item-top"><strong>${escapeHtml(product.name)}</strong><span class="menu-item-price">${formatCurrency(toNumberSafe(product.menu_price))}</span></div>
                       ${product.flavor ? `<p class="menu-item-flavor">${escapeHtml(product.flavor)}</p>` : ''}
@@ -3879,6 +3921,14 @@ async function handleSaveDetail() {
       },
       ed.ingredients.filter((i) => i.name.trim() && !i.draft),
     );
+    // Fotos da galeria: sobe só as novas (as que já tinham url vieram do
+    // banco, sem file) e regrava a lista inteira (mesmo padrão de
+    // apaga-e-insere dos ingredientes, ver saveProductPhotos em db.js).
+    const menuPhotoUrls = await Promise.all(
+      ed.menuPhotos.map((photo) => (photo.file ? db.uploadProductPhoto(state.session.user.id, photo.file) : photo.url)),
+    );
+    await db.saveProductPhotos(state.session.user.id, ed.productId, menuPhotoUrls);
+    ed.menuPhotos = menuPhotoUrls.map((url) => ({ id: null, url, file: null }));
     await recordPriceHistory(ed.productId, ed.productName, ed);
     ed.photoFile = null;
     state.detailSnapshot = detailSnapshotOf(ed);
@@ -4672,6 +4722,11 @@ app.addEventListener('change', async (event) => {
     if (file) await loadCompanyLogo(file);
     return;
   }
+  if (target.dataset.menuPhotoInput !== undefined) {
+    const file = target.files?.[0];
+    if (file) await addMenuPhoto(target.dataset.menuPhotoInput, file);
+    return;
+  }
   if (!target.dataset.photoInput) return;
   const file = target.files?.[0];
   if (!file) return;
@@ -4680,9 +4735,17 @@ app.addEventListener('change', async (event) => {
 
 async function loadEditorPhoto(editorKey, file) {
   const ed = getEditor(editorKey);
-  const compressed = await compressImageToWebp(file);
+  const compressed = await compressImageToSquareWebp(file);
   ed.photoFile = compressed;
   ed.photoPreviewUrl = URL.createObjectURL(compressed);
+  render();
+}
+
+async function addMenuPhoto(editorKey, file) {
+  const ed = getEditor(editorKey);
+  if (ed.menuPhotos.length >= MENU_PHOTOS_MAX) return;
+  const compressed = await compressImageToSquareWebp(file);
+  ed.menuPhotos.push({ id: null, url: URL.createObjectURL(compressed), file: compressed });
   render();
 }
 
@@ -4950,6 +5013,10 @@ app.addEventListener('click', (event) => {
       break;
     case 'toggle-menu-published':
       state.detail.menuPublished = !state.detail.menuPublished;
+      render();
+      break;
+    case 'remove-menu-photo':
+      getEditor(el.dataset.editor).menuPhotos.splice(Number(el.dataset.index), 1);
       render();
       break;
     case 'confirm-bulk-delete-products':

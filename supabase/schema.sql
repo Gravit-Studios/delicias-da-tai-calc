@@ -319,6 +319,23 @@ create policy "Usuário gerencia os próprios itens de produto" on public.produc
   using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
 -- =========================================================
+-- product_photos — fotos extras da vitrine (até 5 por receita, além da
+-- foto principal em products.photo_url, que continua sendo a usada em
+-- tudo mais no app — lista de receitas, PDF, wizard). Mesmo bucket
+-- product-photos, mesma policy de storage já criada acima.
+-- =========================================================
+create table if not exists public.product_photos (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users (id) on delete cascade,
+  product_id uuid not null references public.products (id) on delete cascade,
+  photo_url text not null,
+  position integer not null default 0
+);
+alter table public.product_photos enable row level security;
+create policy "Usuário gerencia as próprias fotos extras de produto" on public.product_photos for all
+  using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+-- =========================================================
 -- pricing_history — snapshot de cada cálculo (com os 3 cenários de lucro)
 -- =========================================================
 create table if not exists public.pricing_history (
@@ -362,8 +379,17 @@ create or replace view public.public_products
   join public.profiles p on p.id = pr.user_id
   where pr.published = true and p.plan = 'vitrine';
 
+create or replace view public.public_product_photos
+  with (security_invoker = true) as
+  select pp.id, pp.product_id, pp.photo_url, pp.position
+  from public.product_photos pp
+  join public.products pr on pr.id = pp.product_id
+  join public.profiles p on p.id = pr.user_id
+  where pr.published = true and p.plan = 'vitrine';
+
 grant select on public.public_companies to anon;
 grant select on public.public_products to anon;
+grant select on public.public_product_photos to anon;
 
 -- RLS explícita pro anon nas tabelas base (necessária por causa do
 -- security_invoker acima) + grant só nas colunas que as views já expunham.
@@ -381,8 +407,19 @@ create policy "Anon vê produtos publicados de contas vitrine (cardápio públic
     )
   );
 
+create policy "Anon vê fotos extras de produtos publicados de contas vitrine" on public.product_photos
+  for select to anon
+  using (
+    exists (
+      select 1 from public.products pr
+      join public.profiles p on p.id = pr.user_id
+      where pr.id = product_photos.product_id and pr.published = true and p.plan = 'vitrine'
+    )
+  );
+
 grant select (id, company_name, logo_url, slug, ifood_url, link_99_url, keeta_url) on public.profiles to anon;
 grant select (id, user_id, name, description, flavor, category, menu_price, photo_url, yield_amount) on public.products to anon;
+grant select (id, product_id, photo_url, position) on public.product_photos to anon;
 
 -- =========================================================
 -- Limites do plano Gratuito (ver src/planLimits.js) aplicados no banco —

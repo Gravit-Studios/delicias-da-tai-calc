@@ -24,6 +24,34 @@ export async function compressImageToWebp(file, { maxDimension = MAX_DIMENSION, 
   }
 }
 
+// Foto de receita (capa e galeria da vitrine): recorta pro centro num
+// quadrado e redimensiona pra um tamanho fixo, além de converter pra WebP —
+// mantém as fotos com proporção previsível no cardápio público (miniaturas
+// não "esticam" foto retrato/paisagem de jeitos diferentes) e o arquivo leve
+// (600x600 já é maior que qualquer exibição usada no app).
+const SQUARE_SIZE = 600;
+const SQUARE_QUALITY = 0.82;
+
+export async function compressImageToSquareWebp(file, { size = SQUARE_SIZE, quality = SQUARE_QUALITY } = {}) {
+  if (!file.type.startsWith('image/')) return file;
+  try {
+    const image = await loadImage(file);
+    const cropSide = Math.min(image.width, image.height);
+    const sx = (image.width - cropSide) / 2;
+    const sy = (image.height - cropSide) / 2;
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+    canvas.getContext('2d').drawImage(image, sx, sy, cropSide, cropSide, 0, 0, size, size);
+    const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/webp', quality));
+    if (!blob) return file;
+    const webpName = `${file.name.replace(/\.[^./]+$/, '')}.webp`;
+    return new File([blob], webpName, { type: 'image/webp' });
+  } catch {
+    return file;
+  }
+}
+
 function loadImage(file) {
   return new Promise((resolve, reject) => {
     const url = URL.createObjectURL(file);
