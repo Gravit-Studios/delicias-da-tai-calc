@@ -21,6 +21,13 @@ $space-8: 32px;
 
 $bp-tablet: 900px;
 
+// Breakpoint maior, só pra grids de duas colunas específicos da Landing V2
+// (hero e "Como funciona") que precisam de bem mais espaço que $bp-tablet
+// pra não espremer — abaixo dele, tablets em paisagem (ex.: iPad ~1024px)
+// ainda caíam no layout de duas colunas apertado, com texto e fotos
+// espremidos, em vez de empilhar como no celular.
+$bp-tablet-lg: 1180px;
+
 // Altura real do .navbar (padding 14px + conteúdo ~32px + borda 1px) — usada
 // pra grudar o cabeçalho de página logo abaixo dele ao fixar no scroll.
 $navbar-height: 61px;

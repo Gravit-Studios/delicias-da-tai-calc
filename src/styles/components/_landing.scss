@@ -1495,7 +1495,11 @@
   justify-content: space-between;
   gap: clamp(24px, 5vw, 64px);
 
-  @include respond-down($bp-tablet) {
+  // $bp-tablet-lg (não $bp-tablet): as duas colunas (texto ~480px + mockup
+  // ~420px) só cabem com folga a partir de ~1180px de largura de container
+  // — em telas de tablet (ex.: iPad em paisagem, ~1024px) ficavam espremidas
+  // mesmo antes desse ponto, então empilha e centraliza bem antes.
+  @include respond-down($bp-tablet-lg) {
     flex-direction: column;
     text-align: center;
   }
@@ -1518,7 +1522,7 @@
     }
   }
 
-  @include respond-down($bp-tablet) {
+  @include respond-down($bp-tablet-lg) {
     max-width: 100%;
     text-align: center;
     align-items: center;
@@ -1549,7 +1553,7 @@
     margin: 0 auto;
   }
 
-  @include respond-down($bp-tablet) {
+  @include respond-down($bp-tablet-lg) {
     max-width: 320px;
     margin: 64px auto 40px;
   }
@@ -1589,7 +1593,7 @@
   gap: 12px;
   margin-top: clamp(40px, 9vh, 96px);
 
-  @include respond-down($bp-tablet) {
+  @include respond-down($bp-tablet-lg) {
     justify-content: center;
   }
 }
@@ -1725,6 +1729,7 @@
   color: rgba(var(--primary-600-rgb), 0.05);
   pointer-events: none;
   user-select: none;
+  will-change: transform;
 }
 
 // Largura/centralização vêm do .landing-section-inner no mesmo elemento —
@@ -1737,7 +1742,11 @@
   gap: clamp(32px, 6vw, 80px);
   align-items: start;
 
-  @include respond-down($bp-tablet) {
+  // $bp-tablet-lg (não $bp-tablet): mesmo motivo do hero — em tablets
+  // (ex.: iPad em paisagem) as duas colunas ainda cabiam tecnicamente, mas
+  // espremidas, com fotos bem menores que o desejado; empilhar mais cedo
+  // deixa as fotos ocuparem a largura toda da coluna única.
+  @include respond-down($bp-tablet-lg) {
     grid-template-columns: 1fr;
     gap: 40px;
   }
@@ -1759,9 +1768,10 @@
     order: 1;
   }
 
-  // No mobile (uma coluna) o texto volta pra cima em todos os passos —
-  // alternância de lado só faz sentido com as duas colunas lado a lado.
-  @include respond-down($bp-tablet) {
+  // No mobile/tablet (uma coluna) o texto volta pra cima em todos os
+  // passos — alternância de lado só faz sentido com as duas colunas lado
+  // a lado.
+  @include respond-down($bp-tablet-lg) {
     .landing-v2-step-copy {
       order: 1;
     }
@@ -1850,16 +1860,16 @@
     font-weight: $fw-bold;
   }
 
-  @include respond-down($bp-tablet) {
+  @include respond-down($bp-tablet-lg) {
     margin-left: 0;
   }
 }
 
-// Coluna (não linha): com o texto sticky ao lado, as fotos maiores entram
-// uma por vez de baixo pra cima conforme a seção rola. A coluna é mais
-// larga que a célula do grid (width 120% + margem negativa pro lado do
-// texto): as fotos grandonas invadem parcialmente a coluna do texto,
-// passando POR TRÁS dele (copy tem z-index maior).
+// Coluna mais larga que a célula do grid (width 120% + margem negativa pro
+// lado do texto): as fotos grandonas invadem parcialmente a coluna do
+// texto, passando POR TRÁS dele (copy tem z-index maior). Em tablet/mobile
+// (uma coluna só) isso não faz sentido — as fotos ocupam 100% da largura
+// disponível, preenchendo bem mais espaço.
 .landing-v2-step-photos {
   display: flex;
   flex-direction: column;
@@ -1869,7 +1879,7 @@
   width: 120%;
   margin-left: -20%;
 
-  @include respond-down($bp-tablet) {
+  @include respond-down($bp-tablet-lg) {
     padding: 0;
     gap: 28px;
     width: 100%;
@@ -1881,7 +1891,7 @@
   margin-left: 0;
   margin-right: -20%;
 
-  @include respond-down($bp-tablet) {
+  @include respond-down($bp-tablet-lg) {
     margin: 0;
   }
 }
@@ -1895,6 +1905,14 @@
 
   &:nth-child(2) {
     align-self: flex-end;
+  }
+
+  // Em tablet/mobile a coluna de fotos passa a ser 100% da largura (ver
+  // .landing-v2-step-photos), sobrando bem mais espaço ao lado — usa uma
+  // fração maior da largura da tela pra preencher melhor, em vez de ficar
+  // pequena dentro de um espaço agora bem mais largo.
+  @include respond-down($bp-tablet-lg) {
+    width: clamp(280px, 55vw, 480px);
   }
 }
 

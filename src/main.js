@@ -4022,6 +4022,7 @@ function setupScrollReveal() {
     if (!el.classList.contains('is-visible')) scrollRevealObserver.observe(el);
   });
   updateStepsBigPhoto();
+  updateLandingV2StepWordParallax();
   syncLandingV2Footer();
 }
 
@@ -4068,6 +4069,32 @@ function updateStepsBigPhoto() {
   });
 }
 
+// Parallax da palavra gigante de fundo em cada passo do "Como funciona"
+// (#/lp2, ver .landing-v2-step-word): deriva mais devagar que o scroll
+// normal, criando sensação de profundidade atrás do texto/fotos. progress
+// vai de 0 (passo ainda abaixo da viewport) a 1 (passo já passou da
+// viewport) — o -0.5 centraliza a deriva (sobe até metade do percurso,
+// desce na outra metade) em vez de só empurrar num sentido só.
+const LANDING_V2_STEP_WORD_PARALLAX_RANGE = 140;
+
+function updateLandingV2StepWordParallax() {
+  const steps = app.querySelectorAll('.landing-v2-step');
+  if (!steps.length) return;
+  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  steps.forEach((step) => {
+    const word = step.querySelector('.landing-v2-step-word');
+    if (!word) return;
+    if (reduced) {
+      word.style.transform = '';
+      return;
+    }
+    const rect = step.getBoundingClientRect();
+    const total = rect.height + window.innerHeight;
+    const progress = Math.min(1, Math.max(0, (window.innerHeight - rect.top) / total));
+    word.style.transform = `translateY(${((progress - 0.5) * LANDING_V2_STEP_WORD_PARALLAX_RANGE).toFixed(1)}px)`;
+  });
+}
+
 // O rodapé da V2 é position: fixed (ver landingV2Footer/.landing-v2-footer-fixed)
 // e não ocupa espaço no fluxo do documento — o spacer no fim do conteúdo
 // principal precisa da altura real do footer via JS, senão a página termina
@@ -4086,6 +4113,7 @@ window.addEventListener('scroll', () => {
   stepsPhotoRaf = requestAnimationFrame(() => {
     stepsPhotoRaf = null;
     updateStepsBigPhoto();
+    updateLandingV2StepWordParallax();
   });
 }, { passive: true });
 
