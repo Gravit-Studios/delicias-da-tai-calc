@@ -3299,18 +3299,38 @@ function landingV2Hero() {
       <img src="/assets/background/bg-banner-02.webp" alt="" class="landing-v2-hero-photo" />
       <div class="landing-v2-hero-overlay"></div>
       <div class="landing-section-inner landing-v2-hero-inner">
-        <h1>
-          <span class="landing-v2-title-line reveal">Sua confeitaria</span>
-          <span class="landing-v2-title-line reveal" style="--reveal-delay: 0.16s"><em><span class="landing-v2-underline">no lucro certo</span></em></span>
-        </h1>
-        <p class="landing-v2-hero-subtitle reveal" style="--reveal-delay: 0.12s">A gestão da sua confeitaria de forma inteligente e integrada com a sua vitrine</p>
-        <div class="landing-hero-actions reveal" style="--reveal-delay: 0.24s">
-          <button type="button" class="landing-v2-cta-solid" data-action="goto" data-route="cadastro">Começar grátis</button>
-          <a href="#precos" class="landing-v2-cta-text">Ver planos e preços</a>
+        <div class="landing-v2-hero-copy">
+          <h1>
+            <span class="landing-v2-title-line reveal">Sua confeitaria</span>
+            <span class="landing-v2-title-line reveal" style="--reveal-delay: 0.16s"><em><span class="landing-v2-underline">no lucro certo</span></em></span>
+          </h1>
+          <p class="landing-v2-hero-subtitle reveal" style="--reveal-delay: 0.12s">A gestão da sua confeitaria de forma inteligente e integrada com a sua vitrine</p>
+          <div class="landing-hero-actions reveal" style="--reveal-delay: 0.24s">
+            <button type="button" class="landing-v2-cta-solid" data-action="goto" data-route="cadastro">Começar grátis</button>
+            <a href="#precos" class="landing-v2-cta-text">Ver planos e preços</a>
+          </div>
+          <p class="landing-v2-hero-note reveal" style="--reveal-delay: 0.34s">Sem cartão de crédito para começar. Cancele quando quiser.</p>
         </div>
-        <p class="landing-v2-hero-note reveal" style="--reveal-delay: 0.34s">Sem cartão de crédito para começar. Cancele quando quiser.</p>
+        <div class="landing-v2-hero-stage reveal reveal-scale" style="--reveal-delay: 0.2s">
+          <div class="landing-hero-floater landing-hero-floater-1">
+            <span class="landing-hero-floater-avatar" style="background:${avatarColorFor('Marina Duarte')}">MD</span>
+            <div><strong>Marina Duarte</strong><small>Doce Ponto Confeitaria</small></div>
+          </div>
+          ${fauxWindow(`
+            <div class="faux-meta faux-meta-highlight"><span>Custo por unidade</span><strong>R$ 2,10</strong></div>
+            <div class="faux-tier"><span>Mínimo</span><strong>R$ 4,90</strong></div>
+            <div class="faux-tier is-active"><span>Média</span><strong>R$ 6,90</strong></div>
+            <div class="faux-tier"><span>Máximo</span><strong>R$ 8,90</strong></div>
+          `)}
+          <div class="landing-hero-floater landing-hero-floater-2">
+            ${icon('trending')}<div><strong>+28%</strong><small>de margem média</small></div>
+          </div>
+          <div class="landing-hero-floater landing-hero-floater-3">
+            ${icon('check')}<div><strong>Margem garantida</strong><small>em cada receita</small></div>
+          </div>
+        </div>
       </div>
-      <div class="landing-v2-hero-chips reveal" style="--reveal-delay: 0.44s">
+      <div class="landing-section-inner landing-v2-hero-chips reveal" style="--reveal-delay: 0.44s">
         ${LANDING_HIGHLIGHTS.map((h) => `<span class="landing-v2-hero-chip"><img src="${h.icon}" alt="" class="landing-v2-hero-chip-icon" />${escapeHtml(h.text)}</span>`).join('')}
       </div>
     </section>`;
