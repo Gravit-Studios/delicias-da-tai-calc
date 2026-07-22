@@ -1515,8 +1515,14 @@
   // ~420px) só cabem com folga a partir de ~1180px de largura de container
   // — em telas de tablet (ex.: iPad em paisagem, ~1024px) ficavam espremidas
   // mesmo antes desse ponto, então empilha e centraliza bem antes.
+  //
+  // align-items troca pra center aqui: em flex-direction: column o eixo
+  // cruzado (align-items) passa a ser o HORIZONTAL — o flex-start herdado
+  // do layout em linha (acima) empurrava tudo (texto E mockup) pra
+  // esquerda em vez de centralizar.
   @include respond-down($bp-tablet-lg) {
     flex-direction: column;
+    align-items: center;
     text-align: center;
   }
 }
