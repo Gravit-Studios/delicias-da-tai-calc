@@ -1942,3 +1942,58 @@
     }
   }
 }
+
+// Navbar da V2 (escopado em .landing-v2 — a landing atual continua com o
+// vidro/blur padrão): transparente de verdade sobre o hero rosa, links e
+// "Entrar" em serifa branca, e o "Começar grátis" como pílula branca com
+// texto rosa serifado itálico, como no layout. Ao rolar (is-scrolled) o
+// fundo volta ao sólido claro padrão — a pílula então inverte (rosa com
+// texto branco) pra não sumir no branco.
+.landing-v2 .landing-nav-overlay {
+  background: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border-bottom: 0;
+
+  .landing-nav-links a {
+    font-family: $font-heading;
+    font-weight: $fw-regular;
+    font-size: 1.05rem;
+  }
+
+  .text-link {
+    font-family: $font-heading;
+    font-weight: $fw-regular;
+    font-size: 1.05rem;
+    color: $white;
+  }
+
+  .landing-nav-actions > button:not(.text-link) {
+    background: $white;
+    color: $primary-600;
+    font-family: $font-heading;
+    font-style: italic;
+    font-weight: $fw-regular;
+    font-size: 1rem;
+    border-radius: $radius-pill;
+    padding: 0.7rem 1.5rem;
+  }
+
+  &.is-scrolled {
+    background: $surface;
+    border-bottom: 1px solid $border;
+
+    .text-link {
+      color: $ink-400;
+
+      &:hover {
+        color: $ink-900;
+      }
+    }
+
+    .landing-nav-actions > button:not(.text-link) {
+      background: $primary-600;
+      color: $white;
+    }
+  }
+}
