@@ -1433,7 +1433,7 @@
   // de verdade — sem essa margem, o canto arredondado encostava direto no
   // topo do footer (mesma cor), sem separação nenhuma pra "ler" como um
   // cartão flutuando sobre o fundo, e o corte ficava estranho.
-  margin-bottom: clamp(48px, 8vw, 96px);
+  margin-bottom: clamp(16px, 2.5vw, 32px);
 }
 
 // Sem altura própria (o footer fixo não ocupa espaço no fluxo), a página
