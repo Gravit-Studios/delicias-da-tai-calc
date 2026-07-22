@@ -1465,7 +1465,12 @@
   position: relative;
   z-index: 1;
   display: flex;
-  align-items: center;
+  // flex-start (não center): as duas colunas começam na mesma altura, como
+  // um grid de verdade — com align-items: center o mockup ficava centralizado
+  // pela altura do texto, e qualquer mudança na altura do texto (ex.: troca
+  // de fonte web depois do primeiro paint) deslocava o mockup e sobrepunha
+  // os cartões flutuantes de forma imprevisível.
+  align-items: flex-start;
   justify-content: space-between;
   gap: clamp(24px, 5vw, 64px);
 
@@ -2033,8 +2038,8 @@
     justify-content: center;
 
     .icon {
-      width: 16px;
-      height: 16px;
+      width: 24px;
+      height: 24px;
     }
   }
 }
