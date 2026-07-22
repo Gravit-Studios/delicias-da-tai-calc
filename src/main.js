@@ -3247,7 +3247,8 @@ const LANDING_V2_STEPS = [
     num: '01',
     title: 'Cadastre ingredientes',
     accent: 'e despesas',
-    text: 'Preço de compra, quantidade e as despesas fixas do seu negócio — uma vez só, tudo num só lugar.',
+    text: 'Preço de compra, quantidade e as despesas fixas do seu negócio — uma vez só, ',
+    strong: 'tudo num só lugar.',
     word: 'ingredientes',
     photos: [
       { src: '/assets/img/pexels-anntarazevich-6035994.webp', alt: 'Confeiteira preparando uma receita', price: 'R$ 16,00' },
@@ -3258,7 +3259,8 @@ const LANDING_V2_STEPS = [
     num: '02',
     title: 'Monte',
     accent: 'suas receitas',
-    text: 'Utilize as bases para saber o custo real e a precificação de cada receita.',
+    text: 'Utilize as bases para saber ',
+    strong: 'o custo real e a precificação de cada receita.',
     word: 'receitas',
     photos: [
       { src: '/assets/img/pexels-amar-9329437.webp', alt: 'Doces prontos para servir', price: 'R$ 12,50' },
@@ -3269,7 +3271,8 @@ const LANDING_V2_STEPS = [
     num: '03',
     title: 'Veja o preço',
     accent: 'sugerido',
-    text: 'Com a margem de lucro que você escolher, calculado na hora, sem planilha.',
+    text: 'Com a margem de lucro que você escolher, ',
+    strong: 'calculado na hora, sem planilha.',
     word: 'preço certo',
     photos: [
       { src: '/assets/img/pexels-anntarazevich-6036020.webp', alt: 'Calda de chocolate sendo derramada', price: 'R$ 8,90' },
@@ -3280,7 +3283,8 @@ const LANDING_V2_STEPS = [
     num: '04',
     title: 'Vitrine',
     accent: 'atualizada',
-    text: 'Suas receitas sempre atualizadas na sua vitrine de forma automática.',
+    text: 'Suas receitas sempre atualizadas na sua vitrine ',
+    strong: 'de forma automática.',
     word: 'vitrine',
     photos: [
       { src: '/assets/img/pexels-handmrts-19347074.webp', alt: 'Vitrine com doces prontos para venda', price: 'R$ 16,00' },
@@ -3295,7 +3299,10 @@ function landingV2Hero() {
       <img src="/assets/background/bg-banner-02.webp" alt="" class="landing-v2-hero-photo" />
       <div class="landing-v2-hero-overlay"></div>
       <div class="landing-section-inner landing-v2-hero-inner">
-        <h1 class="reveal">Sua confeitaria<br /><em>no lucro certo</em></h1>
+        <h1>
+          <span class="landing-v2-title-line reveal">Sua confeitaria</span>
+          <span class="landing-v2-title-line reveal" style="--reveal-delay: 0.16s"><em><span class="landing-v2-underline">no lucro certo</span></em></span>
+        </h1>
         <p class="landing-v2-hero-subtitle reveal" style="--reveal-delay: 0.12s">A gestão da sua confeitaria de forma inteligente e integrada com a sua vitrine</p>
         <div class="landing-hero-actions reveal" style="--reveal-delay: 0.24s">
           <button type="button" class="landing-v2-cta-solid" data-action="goto" data-route="cadastro">Começar grátis</button>
@@ -3314,7 +3321,10 @@ function landingV2Benefits() {
     <section class="landing-section landing-v2-benefits" id="beneficios">
       <div class="landing-section-inner">
         <p class="eyebrow-pill reveal">Benefícios</p>
-        <h2 class="reveal" style="--reveal-delay: 0.1s">A gestão inteligente<br /><em class="accent-tone">que sua confeitaria precisa</em></h2>
+        <h2>
+          <span class="landing-v2-title-line reveal" style="--reveal-delay: 0.08s">A gestão inteligente</span>
+          <span class="landing-v2-title-line reveal" style="--reveal-delay: 0.22s"><em class="accent-tone">que sua <span class="landing-v2-underline">confeitaria precisa</span></em></span>
+        </h2>
         <div class="landing-v2-benefits-grid">
           ${LANDING_BENEFITS.map((b, index) => `
             <div class="landing-v2-benefit-card reveal" style="--reveal-delay: ${(index * 0.08).toFixed(2)}s">
@@ -3336,7 +3346,10 @@ function landingV2Steps() {
     <section class="landing-v2-steps" id="como-funciona">
       <div class="landing-section-inner landing-v2-steps-intro">
         <p class="eyebrow-pill reveal">Como funciona</p>
-        <h2 class="reveal" style="--reveal-delay: 0.1s">Do ingrediente<br /><em class="accent-tone">à precificação certa</em></h2>
+        <h2>
+          <span class="landing-v2-title-line reveal" style="--reveal-delay: 0.08s">Do ingrediente</span>
+          <span class="landing-v2-title-line reveal" style="--reveal-delay: 0.22s"><em class="accent-tone">à <span class="landing-v2-underline">precificação certa</span></em></span>
+        </h2>
       </div>
       ${LANDING_V2_STEPS.map((step, i) => {
         const dir = i % 2 === 1 ? 'reveal-right' : 'reveal-left';
@@ -3345,11 +3358,12 @@ function landingV2Steps() {
           <span class="landing-v2-step-word" aria-hidden="true">${escapeHtml(step.word)}</span>
           <div class="landing-section-inner landing-v2-step-inner">
             <div class="landing-v2-step-copy">
-              <div class="landing-v2-step-heading">
-                <span class="landing-v2-step-num reveal ${dir}">${escapeHtml(step.num)}</span>
-                <h3 class="reveal ${dir}" style="--reveal-delay: 0.12s">${escapeHtml(step.title)}<br /><em>${escapeHtml(step.accent)}</em></h3>
-              </div>
-              <p class="reveal" style="--reveal-delay: 0.26s">${escapeHtml(step.text)}</p>
+              <span class="landing-v2-step-num reveal ${dir}">${escapeHtml(step.num)}</span>
+              <h3>
+                <span class="landing-v2-title-line reveal ${dir}" style="--reveal-delay: 0.1s">${escapeHtml(step.title)}</span>
+                <span class="landing-v2-title-line reveal ${dir}" style="--reveal-delay: 0.24s"><em>${escapeHtml(step.accent)}</em></span>
+              </h3>
+              <p class="reveal" style="--reveal-delay: 0.36s">${escapeHtml(step.text)}<strong>${escapeHtml(step.strong)}</strong></p>
             </div>
             <div class="landing-v2-step-photos">
               ${step.photos.map((photo, j) => `
