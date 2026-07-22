@@ -1754,9 +1754,18 @@
 
 // z-index: 1 porque as fotos maiores invadem a coluna do texto (ver width/
 // margens negativas em .landing-v2-step-photos) — o texto fica por cima.
+// sticky (não fixed): fica preso enquanto a coluna de fotos — mais alta —
+// rola por baixo, e solta sozinho quando o passo (.landing-v2-step, altura
+// definida pelo conteúdo) termina; não precisa de JS porque o "trilho" já
+// é o próprio grid do passo, sem altura artificial de 100vh.
 .landing-v2-step-copy {
-  position: relative;
+  position: sticky;
+  top: 32px;
   z-index: 1;
+
+  @include respond-down($bp-tablet-lg) {
+    position: static;
+  }
 }
 
 .landing-v2-step.is-flipped .landing-v2-step-inner {
@@ -1994,6 +2003,11 @@
   align-items: center;
   gap: clamp(48px, 8vh, 96px);
   padding: clamp(72px, 12vh, 140px) 24px clamp(28px, 4vh, 44px);
+  // Cantos de cima arredondados: no momento da revelação (ver
+  // .landing-v2-footer-spacer), o topo desse painel vira uma borda visível
+  // na tela — arredondar dá o ar de um cartão subindo por cima da página,
+  // não um retângulo cortado reto.
+  border-radius: 32px 32px 0 0;
 }
 
 .landing-v2-footer-cta {
