@@ -527,6 +527,11 @@
   }
 }
 
+// Título "Escolha o plano..." maior (mesma seção usada na landing v1 e v2).
+#precos h2 {
+  font-size: clamp(1.9rem, 3.6vw, 2.5rem);
+}
+
 .landing-section-tint {
   background: $surface-tint;
 }
@@ -1453,8 +1458,8 @@
   inset: 0;
   background: linear-gradient(
     170deg,
-    rgba(var(--primary-500-rgb), 0.86),
-    rgba(var(--primary-700-rgb), 0.94)
+    rgba(var(--primary-500-rgb), 0.55),
+    rgba(var(--primary-700-rgb), 0.68)
   );
 }
 
@@ -1514,37 +1519,6 @@
   }
 }
 
-// Envolve o CTA sólido (hero ou footer) + a setinha de "clique aqui" ao
-// lado (ver seta-curva.png) — a seta baloiça devagar num loop contínuo,
-// só reforçando que o botão é clicável, sem exigir hover.
-.landing-v2-cta-solid-wrap {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-}
-
-.landing-v2-cta-arrow {
-  width: 34px;
-  height: 34px;
-  margin-left: 4px;
-  animation: landing-v2-arrow-nudge 1.8s ease-in-out infinite;
-
-  @include respond-down($bp-tablet) {
-    display: none;
-  }
-}
-
-@keyframes landing-v2-arrow-nudge {
-  0%, 100% { transform: translate(0, 0) rotate(0deg); }
-  50% { transform: translate(4px, -4px) rotate(6deg); }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .landing-v2-cta-arrow {
-    animation: none;
-  }
-}
-
 .landing-v2-hero-chips {
   position: relative;
   z-index: 1;
@@ -1577,8 +1551,12 @@
 
 // Benefícios V2: fundo claro, cartões rosa suave com título rosa em sans
 // (sem ícone, como na referência) — mesmo conteúdo da landing atual.
-.landing-v2-benefits h2 em {
-  display: block;
+.landing-v2-benefits h2 {
+  font-size: clamp(1.9rem, 3.6vw, 2.5rem);
+
+  em {
+    display: block;
+  }
 }
 
 .landing-v2-benefits-grid {
@@ -1959,11 +1937,6 @@
       filter: brightness(0.95);
     }
   }
-}
-
-.landing-v2-footer-arrow {
-  width: 40px;
-  height: 40px;
 }
 
 .landing-v2-footer-bar {

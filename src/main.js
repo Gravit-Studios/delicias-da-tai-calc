@@ -3305,10 +3305,7 @@ function landingV2Hero() {
         </h1>
         <p class="landing-v2-hero-subtitle reveal" style="--reveal-delay: 0.12s">A gestão da sua confeitaria de forma inteligente e integrada com a sua vitrine</p>
         <div class="landing-hero-actions reveal" style="--reveal-delay: 0.24s">
-          <span class="landing-v2-cta-solid-wrap">
-            <button type="button" class="landing-v2-cta-solid" data-action="goto" data-route="cadastro">Começar grátis</button>
-            <img src="/assets/icons/seta-curva.png" alt="" class="landing-v2-cta-arrow" />
-          </span>
+          <button type="button" class="landing-v2-cta-solid" data-action="goto" data-route="cadastro">Começar grátis</button>
           <a href="#precos" class="landing-v2-cta-text">Ver planos e preços</a>
         </div>
         <p class="landing-v2-hero-note reveal" style="--reveal-delay: 0.34s">Sem cartão de crédito para começar. Cancele quando quiser.</p>
@@ -3397,10 +3394,7 @@ function landingV2Footer() {
       <footer class="landing-v2-footer-fixed">
         <div class="landing-v2-footer-cta">
           <h2>Ainda adivinhando preço?<br /><em>Deixe sua confeitaria inteligente!</em></h2>
-          <span class="landing-v2-cta-solid-wrap">
-            <button type="button" data-action="goto" data-route="cadastro">Começar grátis</button>
-            <img src="/assets/icons/seta-curva.png" alt="" class="landing-v2-cta-arrow landing-v2-footer-arrow" />
-          </span>
+          <button type="button" data-action="goto" data-route="cadastro">Começar grátis</button>
         </div>
         <div class="landing-v2-footer-bar">
           <span>&copy; ${year} SweetHub. Todos os direitos reservados.</span>
@@ -4008,7 +4002,6 @@ function setupScrollReveal() {
     if (!el.classList.contains('is-visible')) scrollRevealObserver.observe(el);
   });
   updateStepsBigPhoto();
-  updateLandingV2Parallax();
   syncLandingV2Footer();
 }
 
