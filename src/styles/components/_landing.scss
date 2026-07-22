@@ -1409,10 +1409,26 @@
 // Fundo opaco + z-index acima do footer fixo (ver .landing-v2-footer-fixed
 // mais abaixo) — é esse fundo que esconde o footer atrás da página durante
 // a rolagem normal, revelando só no .landing-v2-footer-spacer no final.
+// Mesma cor do footer (não branco): a última seção (#precos) tem os cantos
+// de baixo arredondados, então o que "aparece" por trás desses cantos
+// precisa já ser a cor do footer, não um branco destoante — cada seção
+// que dependia do branco ambiente (Benefícios, Planos) ganhou fundo
+// próprio explícito pra não virar rosa também.
 .landing-v2 {
   position: relative;
   z-index: 1;
+  background: $primary-600;
+}
+
+// #precos é a última seção de conteúdo antes do spacer/footer (ver
+// landingV2Html) — cantos de baixo arredondados + fundo próprio (branco,
+// já que o fundo ambiente de .landing-v2 virou rosa) fazem essa seção
+// parecer um cartão "flutuando" sobre a cor do footer que já começa a
+// aparecer nos cantos. Escopado com .landing-v2 na frente porque #precos
+// também é usado (sem esse efeito) na landing v1, que usa só .landing.
+.landing-v2 #precos {
   background: $white;
+  border-radius: 0 0 32px 32px;
 }
 
 // Sem altura própria (o footer fixo não ocupa espaço no fluxo), a página
@@ -1619,11 +1635,17 @@
 
 // Benefícios V2: fundo claro, cartões rosa suave com título rosa em sans
 // (sem ícone, como na referência) — mesmo conteúdo da landing atual.
-.landing-v2-benefits h2 {
-  font-size: clamp(1.9rem, 3.6vw, 2.5rem);
+// Fundo próprio explícito porque .landing-v2 (o fundo ambiente) agora é da
+// cor do footer, não mais branco (ver comentário em .landing-v2).
+.landing-v2-benefits {
+  background: $white;
 
-  em {
-    display: block;
+  h2 {
+    font-size: clamp(1.9rem, 3.6vw, 2.5rem);
+
+    em {
+      display: block;
+    }
   }
 }
 
@@ -1677,8 +1699,15 @@
 // "Como funciona" V2: fundo rosa clarinho contínuo; cada passo ocupa a
 // altura da tela no desktop (min-height: 100vh) com texto de um lado e as
 // fotos com etiqueta de preço do outro, alternando os lados (.is-flipped).
+// Duas camadas (não só a rgba sozinha): a rgba de 6% é translúcida, então
+// dependia do branco ambiente de .landing-v2 aparecendo por trás pra virar
+// um rosa bem clarinho — agora que esse ambiente é a cor do footer, uma
+// base branca opaca própria mantém o mesmo tom de antes, sem depender do
+// que está atrás.
 .landing-v2-steps {
-  background: rgba(var(--primary-500-rgb), 0.06);
+  background:
+    linear-gradient(rgba(var(--primary-500-rgb), 0.06), rgba(var(--primary-500-rgb), 0.06)),
+    $white;
   padding: clamp(48px, 7vw, 80px) 0 clamp(32px, 5vw, 64px);
   scroll-margin-top: $navbar-height;
 }
@@ -2003,11 +2032,6 @@
   align-items: center;
   gap: clamp(48px, 8vh, 96px);
   padding: clamp(72px, 12vh, 140px) 24px clamp(28px, 4vh, 44px);
-  // Cantos de cima arredondados: no momento da revelação (ver
-  // .landing-v2-footer-spacer), o topo desse painel vira uma borda visível
-  // na tela — arredondar dá o ar de um cartão subindo por cima da página,
-  // não um retângulo cortado reto.
-  border-radius: 32px 32px 0 0;
 }
 
 .landing-v2-footer-cta {
