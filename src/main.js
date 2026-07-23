@@ -370,6 +370,22 @@ function restoreFocus(restore) {
   el.focus();
   if (typeof restore.selStart === 'number' && el.setSelectionRange) {
     try { el.setSelectionRange(restore.selStart, restore.selEnd); } catch { /* ignore */ }
+  } else if (el.setSelectionRange) {
+    // input type="email" (e outros como number/url) não relata
+    // selectionStart (sempre null) e chamar setSelectionRange direto
+    // lança erro nesses tipos — o if acima nunca roda pra eles. Sem isso
+    // o navegador refocava com o cursor na posição 0, e cada letra
+    // digitada entrava ANTES da anterior (texto saía invertido).
+    // Reatribuir o próprio valor NÃO resolve (testado) — o truque que
+    // funciona é trocar o tipo temporariamente pra "text" (que suporta
+    // seleção), posicionar o cursor no fim, e voltar pro tipo original.
+    const originalType = el.type;
+    try {
+      el.type = 'text';
+      el.setSelectionRange(el.value.length, el.value.length);
+    } catch { /* ignore */ } finally {
+      el.type = originalType;
+    }
   }
   requestAnimationFrame(() => el.classList.remove('no-transition'));
 }
