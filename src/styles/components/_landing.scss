@@ -1950,9 +1950,14 @@
 .landing-v2-photo-card {
   width: clamp(250px, 28vw, 460px);
   flex-shrink: 0;
+  // Sem isso a 2ª foto (depois no DOM) sempre pintaria por cima da 1ª ao
+  // subir no parallax (ver updateLandingV2PhotoParallax) — precisa ficar
+  // por trás, então a 1ª ganha um z-index maior.
+  z-index: 1;
 
   &:nth-child(2) {
     align-self: flex-end;
+    z-index: 0;
   }
 
   // Em tablet/mobile a coluna de fotos passa a ser 100% da largura (ver

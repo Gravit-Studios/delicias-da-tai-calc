@@ -4229,9 +4229,6 @@ function updateLandingV2PhotoParallax() {
   steps.forEach((step) => {
     const cards = step.querySelectorAll('.landing-v2-photo-card');
     if (!cards.length) return;
-    const rect = step.getBoundingClientRect();
-    const total = rect.height + window.innerHeight;
-    const progress = Math.min(1, Math.max(0, (window.innerHeight - rect.top) / total));
     cards.forEach((card, index) => {
       if (!card.classList.contains('is-visible')) return;
       if (reduced) {
@@ -4240,7 +4237,20 @@ function updateLandingV2PhotoParallax() {
         return;
       }
       card.style.transition = 'none';
-      const rate = (index + 1) * 55;
+      // Progresso do PRÓPRIO cartão (não do passo inteiro): as duas fotos
+      // ficam bem próximas uma da outra na coluna, então por volta do meio
+      // do scroll de um card o outro já saiu (ou ainda nem entrou) da tela
+      // — usar um progresso por passo fazia a 2ª foto só alcançar a 1ª
+      // depois que ela já tinha sumido no topo. Zera o transform antes de
+      // medir pra não realimentar a posição já deslocada do frame anterior.
+      card.style.transform = 'none';
+      const rect = card.getBoundingClientRect();
+      const total = rect.height + window.innerHeight;
+      const progress = Math.min(1, Math.max(0, (window.innerHeight - rect.top) / total));
+      // A primeira foto mexe pouco (só um leve respiro); a segunda tem um
+      // curso bem maior pra realmente alcançar e passar por trás da
+      // primeira (ver z-index em .landing-v2-photo-card) enquanto rola.
+      const rate = index === 0 ? 40 : 460;
       card.style.transform = `translateY(${((progress - 0.5) * rate).toFixed(1)}px)`;
     });
   });
