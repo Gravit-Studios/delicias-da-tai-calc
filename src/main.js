@@ -5921,9 +5921,24 @@ app.addEventListener('click', (event) => {
       handleConfirmDelete();
       break;
     case 'add-expense':
+      // Mesmo padrão do start-wizard/add-tier: barra ANTES de abrir o
+      // modal (aviso no topo da página) em vez de deixar preencher tudo
+      // pra só then descobrir no fim que bateu o limite.
+      if (!canUse(state.profile.plan, 'categories', state.expenseCategories.length)) {
+        state.statusMessage = `Você atingiu o limite de ${limitFor(state.profile.plan, 'categories')} categorias de despesa do plano Gratuito. Faça upgrade para o Controle para cadastrar categorias ilimitadas.`;
+        render();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        break;
+      }
       openModal('add-expense');
       break;
     case 'add-ingredient-modal':
+      if (!canUse(state.profile.plan, 'ingredients', state.savedIngredients.length)) {
+        state.statusMessage = `Você atingiu o limite de ${limitFor(state.profile.plan, 'ingredients')} ingredientes do plano Gratuito. Faça upgrade para o Controle para cadastrar ingredientes ilimitados.`;
+        render();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        break;
+      }
       openModal('add-ingredient');
       break;
     case 'toggle-ingredient-filter':
