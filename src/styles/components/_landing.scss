@@ -545,6 +545,17 @@
   margin: 0 auto 40px;
 }
 
+// Modificador pontual (seção Planos): a frase é curta o bastante pra caber
+// numa linha só em telas maiores — sem isso ela quebrava em 2 linhas
+// desalinhadas por causa do max-width padrão (48ch) do parágrafo acima.
+.landing-section-subtitle-nowrap {
+  max-width: none;
+
+  @media (min-width: $bp-tablet + 1) {
+    white-space: nowrap;
+  }
+}
+
 // Seção escura (Benefícios): cartões translúcidos com ícone solto (sem chip
 // de fundo) num canto e uma seta decorativa no outro, no lugar do cartão
 // claro anterior.
@@ -1810,8 +1821,10 @@
   }
 }
 
-// z-index: 1 porque as fotos maiores invadem a coluna do texto (ver width/
-// margens negativas em .landing-v2-step-photos) — o texto fica por cima.
+// z-index maior que o dos cartões de foto (1) — as fotos maiores invadem a
+// coluna do texto (ver width/margens negativas em .landing-v2-step-photos) e
+// sem essa diferença de z-index elas empatam e a foto pinta por cima do
+// texto (dependendo da ordem), escondendo o título nos passos invertidos.
 // sticky (não fixed): fica preso enquanto a coluna de fotos — mais alta —
 // rola por baixo, e solta sozinho quando o passo (.landing-v2-step, altura
 // definida pelo conteúdo) termina; não precisa de JS porque o "trilho" já
@@ -1819,7 +1832,7 @@
 .landing-v2-step-copy {
   position: sticky;
   top: 32px;
-  z-index: 1;
+  z-index: 2;
 
   @include stack-below($bp-tablet-lg) {
     position: static;
@@ -1883,9 +1896,10 @@
   transform: scaleX(1);
 }
 
-// Sobre fundos coloridos (hero rosa) o sublinhado primário sumiria —
-// versão branca translúcida.
-.landing-v2-hero .landing-v2-underline::after {
+// Sobre fundos coloridos (hero rosa, painel de praticidade com foto escura)
+// o sublinhado primário sumiria — versão branca translúcida.
+.landing-v2-hero .landing-v2-underline::after,
+.landing-feature-panel .landing-v2-underline::after {
   background: rgba(var(--white-rgb), 0.4);
 }
 

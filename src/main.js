@@ -2986,7 +2986,7 @@ function landingFeaturePanel() {
       <div class="landing-feature-overlay"></div>
       <div class="landing-section-inner landing-feature-inner">
         <p class="eyebrow-pill landing-feature-eyebrow">Praticidade todo dia</p>
-        <h2>Feito pra rotina <em>da sua confeitaria</em></h2>
+        <h2>Feito pra rotina <em class="landing-v2-title-line reveal"><span class="landing-v2-underline">da sua confeitaria</span></em></h2>
         <p class="landing-section-subtitle">Sem planilha, sem calculadora, sem achismo — só o preço certo e gestão inteligente, sempre à mão.</p>
         <div class="landing-feature-cards">
           ${cards.map((c, i) => `
@@ -3014,8 +3014,8 @@ function landingPlansSection() {
     <section class="landing-section" id="precos">
       <div class="landing-section-inner">
         <p class="eyebrow-pill">Planos</p>
-        <h2><span class="muted-tone">Escolha o plano</span> <em class="accent-tone">da sua confeitaria</em></h2>
-        <p class="landing-section-subtitle">O plano Gratuito não tem prazo nem cartão. Cancele quando quiser.</p>
+        <h2><em class="accent-tone">Escolha o plano da sua confeitaria</em></h2>
+        <p class="landing-section-subtitle landing-section-subtitle-nowrap">O plano Gratuito não tem prazo nem cartão. Cancele quando quiser.</p>
         <div class="landing-billing-toggle">
           <button type="button" class="${state.landingBillingCycle === 'mensal' ? 'is-active' : ''}" data-action="set-landing-billing-cycle" data-cycle="mensal">Mensal</button>
           <button type="button" class="${state.landingBillingCycle === 'anual' ? 'is-active' : ''}" data-action="set-landing-billing-cycle" data-cycle="anual">Anual <span class="landing-billing-toggle-badge">-5%</span></button>
