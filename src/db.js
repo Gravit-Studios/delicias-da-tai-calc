@@ -76,7 +76,7 @@ export async function getProfile(userId) {
   const { data, error } = await supabase
     .from('profiles')
     .select(`
-      full_name, company_name, cnpj, role, approval_status, plan,
+      full_name, company_name, cnpj, role, plan,
       plan_billing_cycle, plan_renews_at, plan_auto_renew, created_at, last_price_review_at,
       payment_status, pending_plan, pending_billing_cycle, scheduled_plan,
       cep, street, neighborhood, city, state, address_number, complement,
@@ -86,7 +86,7 @@ export async function getProfile(userId) {
     .maybeSingle();
   if (error) throw error;
   return data ?? {
-    full_name: null, company_name: null, cnpj: null, role: 'user', approval_status: 'approved',
+    full_name: null, company_name: null, cnpj: null, role: 'user',
     plan: 'gratuito', plan_billing_cycle: null, plan_renews_at: null, plan_auto_renew: true,
     created_at: null, last_price_review_at: null,
     payment_status: 'none', pending_plan: null, pending_billing_cycle: null, scheduled_plan: null,
@@ -182,10 +182,6 @@ async function callAdminFunction(action, extra = {}) {
 
 export function adminListUsers() {
   return callAdminFunction('list').then((res) => res.users);
-}
-
-export function adminApproveUser(userId) {
-  return callAdminFunction('approve', { userId });
 }
 
 export function adminSuspendUser(userId) {

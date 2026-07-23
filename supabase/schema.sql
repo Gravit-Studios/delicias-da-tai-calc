@@ -40,8 +40,6 @@ create table if not exists public.profiles (
   slug text not null unique,
   created_at timestamptz not null default now(),
   role text not null default 'user' constraint profiles_role_check check (role in ('user', 'admin')),
-  approval_status text not null default 'pending'
-    constraint profiles_approval_status_check check (approval_status in ('pending', 'approved', 'rejected')),
   -- Gratuito é permanente (sem prazo, sem cartão) — os limites de uso vêm
   -- de src/planLimits.js no client (nº de receitas/ingredientes etc.), não
   -- de uma data de expiração. Controle e Vitrine exigem pagamento

@@ -279,7 +279,7 @@ const state = {
   // shellHtml() não deve usá-lo pra decidir aprovação/plano (ver
   // profileLoaded em shellHtml).
   profileLoaded: false,
-  profile: { fullName: '', role: 'user', approvalStatus: 'approved', plan: 'gratuito' },
+  profile: { fullName: '', role: 'user', plan: 'gratuito' },
   settings: { fullName: '', email: '' },
   company: {
     name: '', cnpj: '',
@@ -303,7 +303,6 @@ const state = {
   profileMenuOpen: false,
   mobileMenuOpen: false,
   openNavMenu: null,
-  adminAlertsOpen: false,
   priceReviewAlertOpen: false,
   successModal: '',
   activeModal: null,
@@ -402,7 +401,6 @@ async function loadUserData() {
     state.profile = {
       fullName: profile.full_name || '',
       role: profile.role || 'user',
-      approvalStatus: profile.approval_status || 'approved',
       plan: profile.plan || 'gratuito',
       planBillingCycle: profile.plan_billing_cycle || null,
       planRenewsAt: profile.plan_renews_at || null,
@@ -415,11 +413,6 @@ async function loadUserData() {
       lastPriceReviewAt: profile.last_price_review_at || null,
     };
     state.profileLoaded = true;
-    // Conta ainda não aprovada pelo super admin: não carrega o resto dos
-    // dados nem libera o app — só a tela de "aguardando aprovação".
-    if (state.profile.role !== 'admin' && state.profile.approvalStatus !== 'approved') {
-      return;
-    }
     const [ingredients, products, expenseCategories, profitTiers, suppliers, customers, budgetRequests] = await Promise.all([
       db.listIngredients(userId),
       db.listProducts(userId),
@@ -605,15 +598,13 @@ async function loadAdminUsers() {
 // ação reversível e de baixo risco, não precisa de confirmação.
 async function handleAdminAction(action, userId) {
   try {
-    if (action === 'approve') await db.adminApproveUser(userId);
     if (action === 'suspend') await db.adminSuspendUser(userId);
     if (action === 'reactivate') await db.adminReactivateUser(userId);
     if (action === 'delete') await db.adminDeleteUser(userId);
     await loadAdminUsers();
     showSuccess(
-      action === 'approve' ? 'Acesso aprovado.'
-        : action === 'suspend' ? 'Usuário suspenso.'
-          : action === 'reactivate' ? 'Usuário reativado.' : 'Usuário excluído.',
+      action === 'suspend' ? 'Usuário suspenso.'
+        : action === 'reactivate' ? 'Usuário reativado.' : 'Usuário excluído.',
     );
   } catch (error) {
     state.admin.error = error.message;
@@ -787,7 +778,7 @@ onAuthStateChange((event, session) => {
     state.ingredientColumnFilters = {};
     state.openIngredientFilterColumn = null;
     state.profileLoaded = false;
-    state.profile = { fullName: '', role: 'user', approvalStatus: 'approved', plan: 'gratuito' };
+    state.profile = { fullName: '', role: 'user', plan: 'gratuito' };
     state.settings = { fullName: '', email: '' };
     state.settingsSnapshot = '{}';
     state.company = {
@@ -2498,9 +2489,8 @@ function renderAdminUsersList(users = state.admin.users) {
     <tbody>
       ${visible.map((u) => {
         const banned = u.bannedUntil && new Date(u.bannedUntil) > new Date();
-        const pending = u.approvalStatus === 'pending';
-        const statusClass = pending ? 'status-pill-pending' : banned ? 'status-pill-danger' : 'status-pill-active';
-        const statusLabel = pending ? 'Aguardando aprovação' : banned ? 'Suspenso' : 'Ativo';
+        const statusClass = banned ? 'status-pill-danger' : 'status-pill-active';
+        const statusLabel = banned ? 'Suspenso' : 'Ativo';
         return `
         <tr>
           <td class="card-subtitle">${escapeHtml(u.companyName || '—')}</td>
@@ -2511,8 +2501,7 @@ function renderAdminUsersList(users = state.admin.users) {
           <td data-label="Expira em">${u.planRenewsAt ? formatDate(u.planRenewsAt) : '—'}</td>
           <td data-label="Data de criação">${formatDate(u.createdAt)}</td>
           <td class="data-table-actions">
-            ${pending ? `<button type="button" class="primary" data-action="admin-approve" data-id="${u.id}">Aprovar</button>` : ''}
-            ${pending ? '' : banned
+            ${banned
               ? `<button type="button" class="ghost" data-action="admin-reactivate" data-id="${u.id}">Reativar</button>`
               : `<button type="button" class="ghost" data-action="admin-confirm-suspend" data-id="${u.id}">Suspender</button>`}
             <button type="button" class="danger" data-action="admin-confirm-delete" data-id="${u.id}">Excluir</button>
@@ -2679,36 +2668,6 @@ function mobileDrawer(displayName) {
     </div>`;
 }
 
-// Conta recém-criada, ainda não aprovada pelo super admin: mostra só uma
-// tela de espera (com opção de sair) em vez do app inteiro.
-function pendingApprovalHtml(displayName) {
-  return `
-    <div class="shell">
-      <header class="navbar">
-        <div class="navbar-inner">
-          <button type="button" class="brand" data-action="goto" data-route="inicio">
-            <img src="/assets/logotipo/SVG/logotipo-original.png" alt="SweetHub" class="brand-logo" />
-          </button>
-          <div class="navbar-user">
-            <span class="navbar-email">${escapeHtml(displayName)}</span>
-            <span class="navbar-divider" aria-hidden="true"></span>
-            <button type="button" class="text-link" data-action="logout">Sair</button>
-          </div>
-        </div>
-      </header>
-      <div class="main-area">
-        <div class="page">
-          <div class="pending-approval-panel panel">
-            <p class="eyebrow">Cadastro recebido</p>
-            <h2>Aguardando aprovação</h2>
-            <p>Sua conta foi criada com sucesso. Um administrador do SweetHub precisa aprovar o seu acesso antes de você poder usar o app — isso costuma ser rápido.</p>
-          </div>
-        </div>
-      </div>
-      ${siteFooter()}
-    </div>`;
-}
-
 // Conta paga (Controle/Vitrine escolhido na landing page) esperando o
 // webhook do Mercado Pago confirmar o pagamento — ver payment_status em
 // planStatus. Pode levar alguns instantes depois de voltar do checkout.
@@ -2740,29 +2699,6 @@ function paymentPendingHtml(displayName, profile) {
         </div>
       </div>
       ${siteFooter()}
-    </div>`;
-}
-
-// Ícone de sino no navbar do super admin, com contagem de contas aguardando
-// aprovação e um atalho para aprovar direto do dropdown.
-function adminAlertsMenu() {
-  const pendingUsers = state.admin.users.filter((u) => u.approvalStatus === 'pending');
-  return `
-    <div class="alerts-menu">
-      <button type="button" class="alerts-trigger" data-action="toggle-admin-alerts" aria-label="Avisos">
-        ${icon('bell')}
-        ${pendingUsers.length > 0 ? `<span class="alerts-badge">${pendingUsers.length}</span>` : ''}
-      </button>
-      ${state.adminAlertsOpen ? `
-        <div class="profile-dropdown alerts-dropdown">
-          ${pendingUsers.length === 0
-            ? '<p class="alerts-empty">Nenhum aviso no momento.</p>'
-            : pendingUsers.map((u) => `
-              <div class="alerts-item">
-                <span>${escapeHtml(u.fullName || u.email)} <small class="muted">quer acesso</small></span>
-                <button type="button" class="primary" data-action="admin-approve" data-id="${u.id}">Aprovar</button>
-              </div>`).join('')}
-        </div>` : ''}
     </div>`;
 }
 
@@ -2800,15 +2736,8 @@ function shellHtml() {
   }
   const displayName = state.profile.fullName || nameFromEmail(state.session.user.email);
   const isAdmin = state.profile.role === 'admin';
-  // Vem antes da aprovação manual de propósito: contas que escolheram um
-  // plano pago na landing page já nascem aprovadas pelo webhook assim que o
-  // pagamento confirma (ver mercadopago-checkout) — enquanto isso, a tela de
-  // "aguardando pagamento" é mais precisa que a de "aguardando aprovação".
   if (!isAdmin && planStatus(state.profile) === 'payment_pending') {
     return paymentPendingHtml(displayName, state.profile);
-  }
-  if (!isAdmin && state.profile.approvalStatus !== 'approved') {
-    return pendingApprovalHtml(displayName);
   }
   const showUpgradeBanner = !isAdmin && !isVitrinePlan(state.profile);
   return `
@@ -2826,7 +2755,6 @@ function shellHtml() {
             ${navDropdown(gestaoGroup())}
           </ul>`}
           <div class="navbar-user ${isAdmin ? 'navbar-user-admin' : ''}">
-            ${isAdmin ? adminAlertsMenu() : ''}
             ${!isAdmin && pricesNeedReview(state.profile) ? priceReviewAlertMenu() : ''}
             <div class="profile-menu">
               <button type="button" class="profile-trigger" data-action="toggle-profile-menu">
@@ -4115,7 +4043,24 @@ function render() {
   hydrateInlineSvgs();
   updateLandingNavScrolled();
   renderCaptchaWidgets();
+  syncUpgradeBannerSpace();
 }
+
+// O banner de upgrade é position: fixed (ver .upgrade-banner em
+// _panels.scss) e não ocupa espaço no fluxo normal — sem reservar a altura
+// real dele embaixo do conteúdo, o footer (a última coisa da página) fica
+// visualmente coberto por ele ao rolar até o fim. O padding-bottom fixo que
+// existia só em CSS (.has-upgrade-banner) era um valor chutado que não
+// batia com a altura de verdade do banner (varia com o texto quebrando
+// diferente em cada largura de tela).
+function syncUpgradeBannerSpace() {
+  const shell = app.querySelector('.shell.has-upgrade-banner');
+  const banner = app.querySelector('.upgrade-banner');
+  if (!shell || !banner) return;
+  shell.style.paddingBottom = `${banner.offsetHeight}px`;
+}
+
+window.addEventListener('resize', () => syncUpgradeBannerSpace());
 
 // O script do Turnstile só auto-renderiza [.cf-turnstile] presentes no DOM
 // quando a página carrega — como o render() troca o innerHTML todo, um
@@ -4494,7 +4439,7 @@ async function handleSignupSubmit() {
     state.signup = defaultSignup();
     state.authLoading = false;
     navigate('#/entrar');
-    showSuccess('Quase lá! Enviamos um link de confirmação pro seu e-mail — clique nele pra validar seu acesso. Depois, é só aguardar a aprovação de um administrador para começar a usar o app.', 3600);
+    showSuccess('Quase lá! Enviamos um link de confirmação pro seu e-mail — clique nele pra validar seu acesso e começar a usar o app.', 3600);
     return;
   } catch (error) {
     // E-mail já cadastrado na etapa de assinatura paga: manda pro login em
@@ -6078,10 +6023,6 @@ app.addEventListener('click', (event) => {
       localStorage.setItem('cookieConsent', 'accepted');
       render();
       break;
-    case 'toggle-admin-alerts':
-      state.adminAlertsOpen = !state.adminAlertsOpen;
-      render();
-      break;
     case 'toggle-price-review-alert':
       state.priceReviewAlertOpen = !state.priceReviewAlertOpen;
       render();
@@ -6148,9 +6089,6 @@ app.addEventListener('click', (event) => {
     case 'open-delete-account':
       openDeleteAccountModal();
       break;
-    case 'admin-approve':
-      handleAdminAction('approve', id);
-      break;
     case 'admin-confirm-suspend': {
       const user = state.admin.users.find((u) => u.id === id);
       if (user) openConfirmAdminSuspend(user);
@@ -6205,10 +6143,6 @@ app.addEventListener('click', (event) => {
     const menuKey = state.openNavMenu;
     state.openNavMenu = null;
     setNavDropdownOpen(menuKey, false);
-  }
-  if (state.adminAlertsOpen && !event.target.closest('.alerts-menu')) {
-    state.adminAlertsOpen = false;
-    render();
   }
   if (state.priceReviewAlertOpen && !event.target.closest('.alerts-menu')) {
     state.priceReviewAlertOpen = false;
